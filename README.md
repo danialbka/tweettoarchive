@@ -93,7 +93,6 @@ Account-session mode is optional. The saved cookies stay in the local Chrome pro
 - Official packaged releases may include payment and restore-purchase flows separately.
 - Paid users can manage or restore billing from official builds.
 - Payment status is separate from Dropbox or Google Drive connection status.
-- The free-upload counter is mirrored to Chrome sync as best-effort continuity, not strong anti-abuse enforcement.
 
 ## Development Notes
 
@@ -115,12 +114,6 @@ node --check history.js
 python3 -m json.tool manifest.json >/dev/null
 git diff --check
 ```
-
-## Security Notes
-
-- Never commit Dropbox app secrets, Google Web client secrets, access tokens, refresh tokens, or exported cookie headers.
-- Chrome extension OAuth client IDs and web client IDs are public identifiers, but client secrets do not belong in the extension.
-- Official paid-release packaging may include extra payment files that are not part of this public source checkout.
 
 ## License
 
