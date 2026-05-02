@@ -121,4 +121,8 @@ git diff --check
 
 ## License
 
-No project license is declared yet. Treat this repository as private/internal unless a license is added.
+Tweet Media Archive is source-available under the PolyForm Noncommercial License 1.0.0. You can inspect, study, and use the project for noncommercial purposes under the terms in [LICENSE](LICENSE).
+
+Official packaged releases, Chrome Web Store builds, automatic update-channel access, commercial use, paid redistribution, and support require a separate paid license or subscription. See [COMMERCIAL.md](COMMERCIAL.md).
+
+Third-party components are not relicensed by this project license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
