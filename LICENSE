@@ -18,8 +18,8 @@ available license. Those rights require a separate commercial license or paid
 subscription from the copyright holder.
 
 Third-party components are not relicensed by this file. They remain under their
-own licenses and notices, including the vendored ExtensionPay library described
-in THIRD_PARTY_NOTICES.md.
+own licenses and notices. Official packaged releases may include separately
+distributed components that are not part of this public source checkout.
 
 PolyForm Noncommercial License 1.0.0
 

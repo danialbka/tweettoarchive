@@ -33,8 +33,7 @@
     "https://cdninstagram.com/*",
     "https://*.cdninstagram.com/*",
     "https://fbcdn.net/*",
-    "https://*.fbcdn.net/*",
-    "https://extensionpay.com/*"
+    "https://*.fbcdn.net/*"
   ],
   "oauth2": {
     "client_id": "857797361531-4lru9kslehfbou1l7v9jgrvstb0bl1ce.apps.googleusercontent.com",
@@ -42,17 +41,6 @@
       "https://www.googleapis.com/auth/drive.file"
     ]
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://extensionpay.com/*"
-      ],
-      "js": [
-        "vendor/ExtPay.js"
-      ],
-      "run_at": "document_start"
-    }
-  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';"
   },

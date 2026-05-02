@@ -21,5 +21,8 @@ updates do not grant access to official packaged releases, update-channel
 delivery, paid support, or commercial rights unless a separate paid license says
 so.
 
+Official packaged releases may include separately distributed payment/unlock
+components that are not vendored in the public source checkout.
+
 Third-party components remain under their own licenses. See
 `THIRD_PARTY_NOTICES.md`.

@@ -4,7 +4,7 @@
 
 Tweet Media Archive is a Chrome MV3 extension for saving social media and direct media links into your own cloud storage. Connect Dropbox or Google Drive once, paste supported URLs into the popup, and the extension resolves the media files, uploads them, and keeps a local upload history.
 
-The extension includes 30 free successful URL uploads. Unlimited uploads are unlocked through the paid plans configured in ExtensionPay.
+The public source checkout includes 30 free successful URL uploads. Official packaged releases may include the separately distributed payment bridge used to unlock paid plans, updates, and support.
 
 ## What It Supports
 
@@ -87,8 +87,9 @@ The extension stores only the allowlisted cookies needed for the resolver flow a
 ## Payments
 
 - The first 30 successful URL uploads are free.
-- ExtensionPay opens the unlock and restore-purchase flows.
-- Paid users can manage or restore billing from the popup or options page.
+- The public source repo does not vendor the official payment bridge.
+- Official packaged releases may include payment and restore-purchase flows separately.
+- Paid users can manage or restore billing from official builds.
 - Payment status is separate from Dropbox or Google Drive connection status.
 - The free-upload counter is mirrored to Chrome sync as best-effort continuity, not strong anti-abuse enforcement.
 
@@ -100,7 +101,7 @@ The extension stores only the allowlisted cookies needed for the resolver flow a
 - Upload history window: `history.html`, `history.css`, `history.js`
 - Mascot and README art: `assets/`
 - Extension manifest: `manifest.json`
-- Vendored ExtensionPay bridge: `vendor/ExtPay.js`
+- Official payment bridge: not vendored in this public source checkout
 
 Useful checks:
 
@@ -117,7 +118,7 @@ git diff --check
 
 - Never commit Dropbox app secrets, Google Web client secrets, access tokens, refresh tokens, or exported cookie headers.
 - Chrome extension OAuth client IDs and web client IDs are public identifiers, but client secrets do not belong in the extension.
-- Review `THIRD_PARTY_NOTICES.md` before distributing paid builds because this repo vendors `ExtPay.js`.
+- Official paid-release packaging may include extra payment files that are not part of this public source checkout.
 
 ## License
 

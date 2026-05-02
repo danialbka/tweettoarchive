@@ -1,6 +1,9 @@
 /* global chrome, importScripts, ExtPay */
 
-importScripts('vendor/ExtPay.js');
+try {
+  // Official packaged builds may inject this optional payment bridge.
+  importScripts('vendor/ExtPay.js');
+} catch {}
 
 const SETTINGS_KEY = 'tweet_to_dropbox_settings_v1';
 const AUTH_KEY = 'tweet_to_dropbox_auth_v1';
@@ -157,8 +160,8 @@ const X_DEFAULT_TIMELINE_FIELD_TOGGLES = [
   'withDisallowedReplyControls'
 ];
 
-const extpayBackground = ExtPay(EXTPAY_EXTENSION_ID);
-extpayBackground.startBackground();
+const extpayBackground = typeof ExtPay === 'function' ? ExtPay(EXTPAY_EXTENSION_ID) : null;
+extpayBackground?.startBackground();
 
 const DEFAULT_SETTINGS = {
   storageProvider: PROVIDER_DROPBOX,
@@ -1653,6 +1656,10 @@ async function setUsageState(nextUsage) {
 }
 
 function createExtPayClient() {
+  if (typeof ExtPay !== 'function') {
+    throw new Error('The official payment bridge is not included in this source checkout. Use an official packaged release to unlock paid plans.');
+  }
+
   return ExtPay(EXTPAY_EXTENSION_ID);
 }
 

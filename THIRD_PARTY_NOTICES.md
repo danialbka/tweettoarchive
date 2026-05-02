@@ -1,9 +1,6 @@
 # Third-Party Notices
 
-## ExtPay.js
+No third-party runtime libraries are vendored in this public source checkout.
 
-- Source: [ExtensionPay / ExtPay](https://github.com/Glench/ExtPay)
-- Vendored file: `vendor/ExtPay.js`
-- License note from upstream package metadata: `AGPL-3.0-or-later`
-
-Use of this vendored library may carry license obligations. Review the upstream repository and license terms before publishing or distributing paid builds.
+Official packaged releases may include separately distributed payment components
+under their own license terms. Those files are not part of this repository.
