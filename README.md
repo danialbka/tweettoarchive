@@ -84,6 +84,8 @@ Some X/Twitter or Instagram media is unavailable without a logged-in browser ses
 
 The extension stores only the allowlisted cookies needed for the resolver flow and encrypts them locally before saving them in Chrome storage.
 
+Account-session mode is optional. The saved cookies stay in the local Chrome profile and can be removed from the popup or options page at any time. Local encryption helps prevent casual storage inspection, but it does not protect against a compromised browser profile, a malicious extension update, or someone with full access to the local extension data.
+
 ## Payments
 
 - The first 30 successful URL uploads are free.
