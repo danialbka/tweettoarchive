@@ -126,3 +126,53 @@ Tweet Media Archive is source-available under the PolyForm Noncommercial License
 Official packaged releases, Chrome Web Store builds, automatic update-channel access, commercial use, paid redistribution, and support require a separate paid license or subscription. See [COMMERCIAL.md](COMMERCIAL.md).
 
 Third-party components are not relicensed by this project license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Codex Security Scan
+
+![Codex Security Scan](assets/security-scan.png)
+
+_Last reviewed by Codex: May 3, 2026._
+
+This report is a source-code review of the extension install surface. It is meant to help users understand what was checked before installing, but it is not a Chrome Web Store review, a penetration test, or a guarantee against future issues.
+
+### Scan Result
+
+No critical install-blocking vulnerabilities were found in project-owned code during this pass.
+
+Tweet Media Archive still asks for sensitive Chrome extension permissions because of what it does: cloud uploads, optional signed-in X/Twitter or Instagram media resolution, optional local downloads, and local upload history.
+
+### What Was Checked
+
+- `manifest.json` permissions, host permissions, and Content Security Policy.
+- Runtime message handling between extension pages and the background service worker.
+- Dropbox and Google Drive OAuth setup surfaces.
+- Optional X/Twitter and Instagram session-cookie capture, storage, and replay paths.
+- Remote media download validation, size limits, and private-network blocking.
+- Upload history rendering and external-link handling.
+- Vendored ExtensionPay bridge boundary and third-party notice coverage.
+- Repository scans for committed tokens, cookie values, private keys, unsafe dynamic code execution, unsafe inline script policy, and broad `<all_urls>` host access.
+
+### Security Properties Observed
+
+- No `<all_urls>` host permission is requested.
+- No `unsafe-eval` or `unsafe-inline` Content Security Policy allowance is present.
+- No `eval`, `new Function`, `document.write`, or string-based timer execution was found in project-owned code.
+- No committed Dropbox tokens, Google tokens, cookie values, private keys, or API secrets were found by the local pattern scan.
+- Direct media downloads are HTTPS-only, reject local/private hostnames, and enforce response size and content-type checks.
+- Optional X/Twitter and Instagram account-session support stores only allowlisted cookies and encrypts saved session material locally before writing to Chrome storage.
+- History and popup UI paths use DOM text assignment for user-facing values; external links are opened with `noopener`/`noreferrer` protections.
+
+### Sensitive Permissions Explained
+
+- `cookies`: used only for optional signed-in X/Twitter or Instagram media resolution after the user chooses to connect that browser session.
+- `identity`: used for Dropbox and Google Drive account authorization.
+- `downloads`: used for optional local copies through Chrome's Downloads API.
+- `declarativeNetRequest`: used for scoped request headers needed by signed-in media resolver requests.
+- `storage`: used for settings, cloud auth state, encrypted optional session material, usage counts, and upload history.
+
+### Open Hardening Notes
+
+- Optional account-session mode stores sensitive session material locally. Local AES-GCM encryption helps protect against casual storage inspection, but it cannot protect against a compromised browser profile or a malicious extension update.
+- The Google Drive browser fallback currently uses a token redirect flow. A future hardening pass can move that fallback to authorization code plus PKCE.
+- This scan did not include dynamic testing against live X/Twitter, Instagram, Dropbox, or Google Drive accounts.
+- Advanced external SAST and secret-scanning tools were not installed in the local environment for this pass, so the report is based on code inspection plus local syntax, diff, and pattern scans.
