@@ -1,0 +1,50 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="68" y1="44" x2="424" y2="456" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7FBFF"/>
+      <stop offset="0.28" stop-color="#D9ECFF"/>
+      <stop offset="0.66" stop-color="#8FC2F0"/>
+      <stop offset="1" stop-color="#4E88C7"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="140" y1="118" x2="381" y2="371" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.95"/>
+      <stop offset="0.22" stop-color="#ECF8FF" stop-opacity="0.78"/>
+      <stop offset="0.58" stop-color="#A1D4FF" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#5EA6E6" stop-opacity="0.28"/>
+    </linearGradient>
+    <linearGradient id="tray" x1="154" y1="298" x2="358" y2="383" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5FBFF"/>
+      <stop offset="0.55" stop-color="#B6DFFF"/>
+      <stop offset="1" stop-color="#76B2E7"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="256" y1="148" x2="256" y2="318" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E4F96"/>
+      <stop offset="1" stop-color="#1E77C9"/>
+    </linearGradient>
+    <filter id="shadow" x="82" y="81" width="350" height="355" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="18"/>
+      <feGaussianBlur stdDeviation="18"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.134 0 0 0 0 0.279 0 0 0 0 0.458 0 0 0 0.26 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_2"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_2" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect x="44" y="44" width="424" height="424" rx="116" fill="url(#bg)"/>
+  <rect x="57" y="57" width="398" height="398" rx="103" stroke="white" stroke-opacity="0.5" stroke-width="4"/>
+  <path d="M125 118C176 72 287 70 360 108" stroke="white" stroke-opacity="0.65" stroke-width="20" stroke-linecap="round"/>
+
+  <g filter="url(#shadow)">
+    <rect x="118" y="99" width="276" height="294" rx="78" fill="url(#glass)"/>
+    <rect x="118.5" y="99.5" width="275" height="293" rx="77.5" stroke="white" stroke-opacity="0.72"/>
+    <path d="M156 139C204 113 281 110 344 133" stroke="white" stroke-opacity="0.72" stroke-width="18" stroke-linecap="round"/>
+
+    <rect x="152" y="287" width="208" height="72" rx="28" fill="url(#tray)"/>
+    <rect x="152.5" y="287.5" width="207" height="71" rx="27.5" stroke="#DFF1FF" stroke-opacity="0.95"/>
+
+    <path d="M256 154C269.255 154 280 164.745 280 178V250.029H308.515C317.169 250.029 321.964 260.09 316.513 266.812L264.781 330.597C260.187 336.261 251.813 336.261 247.219 330.597L195.487 266.812C190.036 260.09 194.831 250.029 203.485 250.029H232V178C232 164.745 242.745 154 256 154Z" fill="url(#arrow)"/>
+    <path d="M256 167V280" stroke="#9ED2FF" stroke-opacity="0.42" stroke-width="12" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,78 @@
+{
+  "manifest_version": 3,
+  "name": "Tweet Media Archive",
+  "description": "Archive media from X, Twitter, and Instagram straight to Dropbox or Google Drive.",
+  "version": "0.1.6",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjUYFvDQT7Sb+jVj93ytGymFZsQkRGMu+XF4hal4iKN0ikS6CD8dKZ4TLVXV5lV/dMLtYAf0GKyQXce90ilOSQ5fwCLqh6OY1ZmWN0iIwnyWYwwksASB4hBYYsLKaD4hiXcuWHk3TeyLihld4ftHXbF3ehpFpbpzvM1wFkvSSkooMgiayUn/xhlSnnAq1kose01Q//Oyxiu1VtaQ9W82tj47CTM37HGYLf1WRFvxorlKYFcKaKmuaA2jDIyYnuttk6YVXtDyqY86P7Tjc+blT1I3925ZXopMzIg2vhuyR/gFxMbqYqndKu9Px28yNqsCGbCDaf+mRwWCLSrCCRYQV3QIDAQAB",
+  "permissions": [
+    "storage",
+    "identity",
+    "downloads",
+    "cookies",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "https://api.dropboxapi.com/*",
+    "https://content.dropboxapi.com/*",
+    "https://www.dropbox.com/*",
+    "https://accounts.google.com/*",
+    "https://oauth2.googleapis.com/*",
+    "https://www.googleapis.com/*",
+    "https://x.com/*",
+    "https://*.x.com/*",
+    "https://twitter.com/*",
+    "https://*.twitter.com/*",
+    "https://api.x.com/*",
+    "https://abs.twimg.com/*",
+    "https://cdn.syndication.twimg.com/*",
+    "https://pbs.twimg.com/*",
+    "https://video.twimg.com/*",
+    "https://instagram.com/*",
+    "https://www.instagram.com/*",
+    "https://*.instagram.com/*",
+    "https://cdninstagram.com/*",
+    "https://*.cdninstagram.com/*",
+    "https://fbcdn.net/*",
+    "https://*.fbcdn.net/*",
+    "https://extensionpay.com/*"
+  ],
+  "oauth2": {
+    "client_id": "857797361531-4lru9kslehfbou1l7v9jgrvstb0bl1ce.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.file"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://extensionpay.com/*"
+      ],
+      "js": [
+        "vendor/ExtPay.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Tweet Media Archive",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  }
+}

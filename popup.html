@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tweet Media Archive</title>
+  <link rel="icon" href="icons/icon-32.png" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="desktop-scene">
+      <div class="menu-bar" aria-hidden="true"></div>
+
+      <section class="window-shell">
+        <header class="window-titlebar">
+          <p class="window-title">Tweet Media Archive</p>
+          <button
+            id="settingsIconBtn"
+            type="button"
+            class="icon-button"
+            aria-label="Open setup"
+            hidden
+          >
+            ⚙
+          </button>
+        </header>
+
+        <details id="statusDetails" class="window-toolbar toolbar-status-details" aria-label="Storage status">
+          <summary class="toolbar-connection" aria-live="polite">
+            <span class="status-summary-main">
+              <span id="statusDot" class="toolbar-status-dot" aria-hidden="true"></span>
+              <strong id="statusIndicatorLabel" class="toolbar-status-text">Checking storage...</strong>
+            </span>
+            <span id="statusIndicatorHint" class="toolbar-status-hint">Open details</span>
+          </summary>
+
+          <div class="status-body toolbar-status-body">
+            <div class="status-item">
+              <span class="label">Status</span>
+              <strong id="authStatus">Checking connection...</strong>
+            </div>
+            <div class="status-item">
+              <span class="label">Saving to</span>
+              <strong id="folderStatus" class="editable-folder-label" tabindex="0" title="Double-click to edit">Loading...</strong>
+              <input id="folderInput" class="folder-input" type="text" hidden aria-label="Save destination folder" />
+            </div>
+            <div class="status-item">
+              <span class="label">Also save here</span>
+              <strong id="localStatus">Loading...</strong>
+            </div>
+            <div class="status-item">
+              <span class="label">After paste</span>
+              <strong id="pasteStatus">Loading...</strong>
+            </div>
+            <div class="status-item">
+              <span class="label">Plan</span>
+              <strong id="planStatus">Loading...</strong>
+            </div>
+            <div class="status-item">
+              <span class="label">Free uploads left</span>
+              <strong id="quotaStatus">Loading...</strong>
+            </div>
+          </div>
+        </details>
+
+        <div class="window-body">
+          <aside class="sidebar-column">
+            <section id="setupBanner" class="panel setup-banner" hidden>
+              <p class="panel-title">Connect storage first</p>
+              <p id="setupCopy" class="setup-copy">One quick setup, then you can paste links here anytime.</p>
+              <div class="actions">
+                <button id="connectBtn" type="button">Connect storage</button>
+                <button id="optionsBtn" type="button" class="secondary">Open setup</button>
+              </div>
+              <p id="connectProgress" class="connect-progress" hidden>
+                <span class="upload-spinner" aria-hidden="true"></span>
+                <span id="connectProgressText">Connecting...</span>
+              </p>
+            </section>
+
+            <section id="paymentBanner" class="panel setup-banner payment-banner" hidden>
+              <p id="paymentTitle" class="panel-title">Unlock unlimited uploads</p>
+              <p id="paymentCopy" class="setup-copy">You get 30 free successful URL uploads, then the paid plan unlocks unlimited uploads.</p>
+              <div id="paymentActions" class="actions">
+                <button id="unlockBtn" type="button" class="primary">Unlock unlimited uploads</button>
+                <button id="restoreBtn" type="button" class="secondary">Restore purchase</button>
+                <button id="paymentDismissBtn" type="button" class="secondary" hidden>Dismiss</button>
+              </div>
+            </section>
+
+            <section class="panel history-card">
+              <button id="openHistoryBtn" type="button" class="history-launch">
+                <span>Past uploads</span>
+                <span class="history-summary-hint">Open window</span>
+              </button>
+            </section>
+
+            <section class="panel support-card">
+              <p class="panel-title">Contact support</p>
+              <a class="support-link" href="https://chromewebstore.google.com/detail/ojicpdlgnoidfggebaifkbcifhamahff" target="_blank" rel="noreferrer">Open store support</a>
+            </section>
+          </aside>
+
+          <section class="main-column">
+            <section class="panel composer">
+              <div class="storage-selector" aria-label="Save destination">
+                <p class="selector-label">Save destination</p>
+                <div class="storage-choice-row" role="group" aria-label="Cloud storage destination">
+                  <button type="button" class="storage-choice" data-storage-choice="dropbox" aria-pressed="false" disabled>
+                    <span class="storage-choice-copy">
+                      <strong>Dropbox</strong>
+                      <span id="dropboxChoiceStatus">Checking...</span>
+                    </span>
+                  </button>
+                  <button type="button" class="storage-choice" data-storage-choice="google-drive" aria-pressed="false" disabled>
+                    <span class="storage-choice-copy">
+                      <strong>Google Drive</strong>
+                      <span id="googleDriveChoiceStatus">Checking...</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="composer-label-row">
+                <label class="composer-label" for="urlInput">Paste link</label>
+                <span id="uploadSpinner" class="upload-spinner" aria-hidden="true" hidden></span>
+              </div>
+              <textarea id="urlInput" placeholder="Paste one or more supported media links here..."></textarea>
+              <label id="folderSelectField" class="folder-select-field" hidden>
+                Folder
+                <select id="folderSelect" aria-label="Save folder"></select>
+              </label>
+              <p id="uploadStatusText" class="upload-status" hidden></p>
+              <p class="hint">You can paste one link or a whole list. Supported posts, reels, albums, and videos will be pulled out automatically.</p>
+
+              <div class="composer-actions">
+                <button id="captureXCookiesBtn" type="button" class="secondary">Connect my X account</button>
+                <button id="captureInstagramCookiesBtn" type="button" class="secondary">Connect my Instagram account</button>
+                <button id="uploadBtn" type="button" class="send-button">Save</button>
+              </div>
+            </section>
+          </section>
+        </div>
+
+      </section>
+    </section>
+
+    <div id="toast" class="toast" hidden></div>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

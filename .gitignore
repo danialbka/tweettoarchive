@@ -1,0 +1,10 @@
+.DS_Store
+*.zip
+*.crx
+*.pem
+*.key
+.env
+.env.*
+node_modules/
+dist/
+build/

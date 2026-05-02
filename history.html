@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Past uploads</title>
+  <link rel="icon" href="icons/icon-32.png" />
+  <link rel="stylesheet" href="history.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="desktop-scene">
+      <div class="menu-bar" aria-hidden="true"></div>
+
+      <section class="window-shell">
+        <header class="window-titlebar">
+          <p class="window-title">Past uploads</p>
+          <button id="closeBtn" type="button" class="icon-button" aria-label="Close history">×</button>
+        </header>
+
+        <div class="window-toolbar">
+          <span class="toolbar-note">live progress and saved links</span>
+        </div>
+
+        <section class="window-body">
+          <section class="active-panel" aria-live="polite">
+            <div class="history-toolbar">
+              <p id="activeCount" class="history-count">Checking active uploads...</p>
+            </div>
+
+            <div id="activeUploads" class="history empty">No uploads running right now.</div>
+          </section>
+
+          <div class="history-toolbar">
+            <p id="historyCount" class="history-count">Loading history...</p>
+            <button id="clearHistoryBtn" type="button" class="secondary">Clear list</button>
+          </div>
+
+          <div id="history" class="history empty">Loading history...</div>
+        </section>
+      </section>
+    </section>
+
+    <div id="toast" class="toast" hidden></div>
+  </main>
+
+  <script src="history.js"></script>
+</body>
+</html>

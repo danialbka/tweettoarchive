@@ -1,0 +1,292 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tweet Media Archive Setup</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="desktop-scene">
+      <div class="menu-bar" aria-hidden="true"></div>
+
+      <section class="window-shell">
+        <header class="window-titlebar">
+          <p class="window-title">Set up cloud storage</p>
+          <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a href="popup.html">Main</a>
+            <span aria-hidden="true">/</span>
+            <span>Setup</span>
+          </nav>
+        </header>
+
+        <div class="window-toolbar">
+        </div>
+
+        <div class="window-body">
+          <aside class="sidebar-column">
+            <section class="panel identity-card">
+              <p class="brand-mark">tweet media archive</p>
+              <a href="popup.html" class="sidebar-link">Back to main</a>
+            </section>
+
+            <details class="panel help-panel">
+              <summary>Need help setting it up?</summary>
+              <div class="help-body">
+                <p class="guide-copy">For Dropbox:</p>
+                <ol class="guide-list">
+                  <li>Choose Dropbox as the storage provider</li>
+                  <li>Click <strong>Connect Dropbox</strong></li>
+                  <li>Approve the Dropbox sign-in window</li>
+                </ol>
+
+                <p class="guide-copy">For Google Drive:</p>
+                <ol class="guide-list">
+                  <li>Choose Google Drive as the storage provider</li>
+                  <li>Click <strong>Connect Google Drive</strong></li>
+                  <li>Approve the Google sign-in window</li>
+                </ol>
+
+                <p class="guide-copy">Want to use your own OAuth?</p>
+                <p class="guide-copy">For Dropbox:</p>
+                <ol class="guide-list">
+                  <li>
+                    Open
+                    <a
+                      class="guide-inline-link"
+                      href="https://www.dropbox.com/login?cont=%2Fdevelopers%2Fapps%2Fcreate"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Dropbox Create app
+                    </a>
+                  </li>
+                  <li>Choose <strong>Scoped access</strong>, then <strong>Full Dropbox</strong></li>
+                  <li>Turn on <code>files.content.write</code></li>
+                  <li>Open your Dropbox app <strong>Settings</strong> and add the exact Redirect URI shown below</li>
+                  <li>Copy the <strong>App key</strong> and paste it under <strong>Advanced setup</strong> here</li>
+                  <li>Press the <strong>Connect Dropbox</strong> button</li>
+                </ol>
+
+                <p class="guide-copy">For Google Drive:</p>
+                <ol class="guide-list">
+                  <li>Open <strong>Google Cloud OAuth clients</strong></li>
+                  <li>Create a <strong>Web application</strong> OAuth client</li>
+                  <li>Add the exact Redirect URI shown on this page as an authorized redirect URI</li>
+                  <li>Copy the <strong>Client ID</strong>, paste it into <strong>Google OAuth web client ID</strong> under <strong>Advanced setup</strong>, then save</li>
+                  <li>Click <strong>Connect Google Drive</strong> and approve the Google sign-in window</li>
+                </ol>
+
+                <p class="guide-copy">If some X media will not download and upload:</p>
+                <ol class="guide-list">
+                  <li>Sign in on <strong>x.com</strong> or <strong>twitter.com</strong> in this browser</li>
+                  <li>Open <strong>Advanced setup</strong></li>
+                  <li>Click <strong>Connect my X account</strong>, then try the post again</li>
+                </ol>
+
+                <p class="guide-copy">If an Instagram post or reel says it needs your account:</p>
+                <ol class="guide-list">
+                  <li>Sign in on <strong>instagram.com</strong> in this browser</li>
+                  <li>Open <strong>Advanced setup</strong></li>
+                  <li>Click <strong>Connect my Instagram account</strong>, then try the post again</li>
+                </ol>
+
+                <div class="actions">
+                  <a
+                    class="button secondary"
+                    href="https://www.dropbox.com/developers/apps"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Dropbox App Console
+                  </a>
+                  <a
+                    class="button secondary"
+                    href="https://console.cloud.google.com/auth/clients"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Google OAuth Clients
+                  </a>
+                </div>
+              </div>
+            </details>
+          </aside>
+
+          <section class="main-column">
+            <header class="page-hero panel">
+              <p class="hero-kicker">welcome +</p>
+              <h1>Set up cloud storage</h1>
+            </header>
+
+            <section class="panel storage-panel">
+              <div class="section-head">
+                <div>
+                  <h2>Storage connection</h2>
+                  <p id="authState" class="auth-state">Checking storage status...</p>
+                </div>
+              </div>
+
+              <div class="provider-picker">
+                <div class="provider-choice-row" role="group" aria-label="Storage provider">
+                  <button type="button" class="provider-choice" data-provider-choice="dropbox" aria-pressed="false">
+                    <span class="provider-mark" aria-hidden="true">D</span>
+                    <span>
+                      <strong>Dropbox</strong>
+                      <span>Use your Dropbox app key and folder path</span>
+                    </span>
+                  </button>
+                  <button type="button" class="provider-choice" data-provider-choice="google-drive" aria-pressed="false">
+                    <span class="provider-mark google-mark" aria-hidden="true">G</span>
+                    <span>
+                      <strong>Google Drive</strong>
+                      <span>Use Google sign-in and a Drive folder name</span>
+                    </span>
+                  </button>
+                </div>
+
+                <label class="provider-select-label">
+                  Storage provider
+                  <select id="storageProvider">
+                    <option value="dropbox">Dropbox</option>
+                    <option value="google-drive">Google Drive</option>
+                  </select>
+                </label>
+              </div>
+
+              <label id="redirectUriField" class="setup-field">
+                Redirect URI
+                <input id="redirectUri" type="text" readonly spellcheck="false" />
+              </label>
+              <p id="redirectUriHint" class="hint">Add this exact Redirect URI in your Dropbox app settings, including the `/dropbox` path.</p>
+              <div class="actions storage-actions">
+                <div class="action-group">
+                  <button id="saveBtn" type="button" class="secondary">Save changes</button>
+                </div>
+                <div class="action-group primary-action-group">
+                  <button id="connectBtn" type="button" class="primary">Connect storage</button>
+                  <button id="clearBtn" type="button" class="danger">Disconnect storage</button>
+                </div>
+              </div>
+              <p id="connectProgress" class="connect-progress" hidden>
+                <span class="connect-spinner" aria-hidden="true"></span>
+                <span id="connectProgressText">Connecting...</span>
+              </p>
+            </section>
+
+            <section class="panel">
+              <h2>Payments</h2>
+              <p id="paymentState" class="auth-state">Checking payment status...</p>
+              <p id="paymentMeta" class="hint">Your first 30 successful URL uploads are free. Unlimited uploads are unlocked with the paid plan.</p>
+              <div id="paymentActions" class="actions">
+                <button id="unlockBtn" type="button" class="primary">Unlock unlimited uploads</button>
+                <button id="restoreBtn" type="button" class="secondary">Restore purchase</button>
+              </div>
+            </section>
+
+            <fieldset class="panel">
+              <legend>Where to save files</legend>
+              <label id="dropboxFolderField">
+                Dropbox folder
+                <input id="dropboxFolder" type="text" placeholder="/Twitter Imports" />
+              </label>
+              <label id="googleDriveFolderField" hidden>
+                Google Drive folder
+                <input id="googleDriveFolderName" type="text" placeholder="Tweet Media Archive" />
+              </label>
+              <label>
+                Folder dropdown choices
+                <textarea id="remoteFolderOptions" rows="4" placeholder="/Twitter Imports&#10;/Clients/April&#10;/Personal Saves"></textarea>
+              </label>
+              <p class="hint">Type one folder per line. These choices appear under Paste link in the popup.</p>
+              <label class="check">
+                <input id="saveLocalCopies" type="checkbox" />
+                Also save a copy into my Downloads folder
+              </label>
+              <label>
+                Downloads subfolder
+                <input id="localDownloadFolder" type="text" placeholder="Tweet Media Archive" />
+              </label>
+              <p class="hint">This is inside your browser Downloads folder. Example: `Tweet Media Archive/X Media`.</p>
+              <label class="check">
+                <input id="autoStartOnPaste" type="checkbox" />
+                Start saving automatically when I paste links
+              </label>
+              <label class="check">
+                <input id="overwriteExisting" type="checkbox" />
+                Replace same-name files instead of keeping renamed copies
+              </label>
+            </fieldset>
+
+            <details class="panel advanced-panel">
+              <summary>Advanced setup</summary>
+              <div class="advanced-body">
+                <p class="section-kicker">Want to use your own OAuth?</p>
+                <p id="dropboxAdvancedHint" class="hint">Only use this if you already have a Dropbox app key.</p>
+                <p id="googleAuthHint" class="hint" hidden>The included Google OAuth client is used by default. Paste your own Web OAuth client ID only if you want this device to use your Google app instead.</p>
+                <label>
+                  <span class="field-head">
+                    <span>Dropbox app key</span>
+                    <span id="appKeyStatus" class="status-pill success inline-status-pill" hidden>
+                      <span class="status-pill-dot" aria-hidden="true"></span>
+                      <span id="appKeyStatusLabel">Dropbox app key saved</span>
+                    </span>
+                  </span>
+                  <input id="dropboxAppKey" type="password" placeholder="your Dropbox app key" autocomplete="off" spellcheck="false" />
+                </label>
+                <p id="appKeyHint" class="hint">Saved app keys stay on this device with local encryption.</p>
+                <label>
+                  <span class="field-head">
+                    <span>Google OAuth web client ID</span>
+                    <span id="googleOAuthStatus" class="status-pill success inline-status-pill" hidden>
+                      <span class="status-pill-dot" aria-hidden="true"></span>
+                      <span id="googleOAuthStatusLabel">Custom Google OAuth saved</span>
+                    </span>
+                  </span>
+                  <input id="googleOAuthClientId" type="password" placeholder="Use included Google OAuth client" autocomplete="off" spellcheck="false" />
+                </label>
+                <p id="googleOAuthClientHint" class="hint">Leave blank to keep using the included Google OAuth client. Saving a custom client ID will require reconnecting Google Drive.</p>
+                <div id="saveAppKeyActions" class="actions">
+                  <button id="saveAppKeyBtn" type="button" class="secondary">Save OAuth settings</button>
+                </div>
+
+                <div id="captureXAccountActions" class="account-row">
+                  <div class="account-actions">
+                    <button id="captureXCookiesBtn" type="button" class="secondary">Connect my X account</button>
+                    <button id="clearXCookiesBtn" type="button" class="danger" hidden>Remove X account</button>
+                  </div>
+                  <div id="xAccountStatus" class="status-pill success inline-status-pill" hidden>
+                    <span class="status-pill-dot" aria-hidden="true"></span>
+                    <span id="xAccountStatusLabel">X account connected</span>
+                  </div>
+                </div>
+
+                <div id="captureInstagramAccountActions" class="account-row">
+                  <div class="account-actions">
+                    <button id="captureInstagramCookiesBtn" type="button" class="secondary">Connect my Instagram account</button>
+                    <button id="clearInstagramCookiesBtn" type="button" class="danger" hidden>Remove Instagram account</button>
+                  </div>
+                  <div id="instagramAccountStatus" class="status-pill success inline-status-pill" hidden>
+                    <span class="status-pill-dot" aria-hidden="true"></span>
+                    <span id="instagramAccountStatusLabel">Instagram account connected</span>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </section>
+        </div>
+
+        <footer class="window-footer">
+          <span>~ build the web you want to keep ~</span>
+          <span>storage setup</span>
+        </footer>
+      </section>
+    </section>
+
+    <div id="message" class="message" hidden></div>
+  </main>
+
+  <script src="options.js"></script>
+</body>
+</html>
