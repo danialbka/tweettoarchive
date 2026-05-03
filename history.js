@@ -9,12 +9,15 @@ const closeBtn = document.getElementById('closeBtn');
 const toastEl = document.getElementById('toast');
 const COLLAPSED_UPLOAD_LIMIT = 10;
 const COLLAPSED_ACTIVE_ITEM_LIMIT = 10;
+const MEDIA_PREVIEW_HOVER_DELAY_MS = 150;
+const VIDEO_PREVIEW_RELEASE_DELAY_MS = 2000;
 const PREVIEW_IMAGE_EXTENSIONS = new Set(['avif', 'gif', 'jpg', 'jpeg', 'png', 'webp']);
 const PREVIEW_VIDEO_EXTENSIONS = new Set(['m4v', 'mov', 'mp4', 'webm']);
 const expandedActiveSessions = new Set();
 const expandedHistoryEntries = new Set();
 const expandedHistoryGroups = new Set();
 const mediaPreviewCleanups = new Set();
+let activeMediaPreviewHide = null;
 
 function sendMessage(message) {
   return new Promise((resolve, reject) => {
@@ -201,7 +204,6 @@ function appendMediaHoverPreview(anchor, upload) {
 
   const media = document.createElement(kind === 'video' ? 'video' : 'img');
   media.className = 'history-media-preview-frame';
-  media.src = sourceUrl;
   media.addEventListener('error', () => preview.remove(), { once: true });
 
   if (kind === 'video') {
@@ -209,7 +211,7 @@ function appendMediaHoverPreview(anchor, upload) {
     media.autoplay = true;
     media.loop = true;
     media.playsInline = true;
-    media.preload = 'auto';
+    media.preload = 'none';
   } else {
     media.alt = '';
     media.loading = 'lazy';
@@ -221,7 +223,43 @@ function appendMediaHoverPreview(anchor, upload) {
   document.body.appendChild(preview);
 
   let isVisible = false;
+  let showTimer = 0;
+  let releaseTimer = 0;
+  let isSourceAttached = false;
+  const attachPreviewSource = () => {
+    clearTimeout(releaseTimer);
+    releaseTimer = 0;
+    if (isSourceAttached) {
+      return;
+    }
+
+    media.src = sourceUrl;
+    isSourceAttached = true;
+  };
+  const releaseVideoSource = () => {
+    if (kind !== 'video' || !isSourceAttached) {
+      return;
+    }
+
+    media.pause();
+    media.removeAttribute('src');
+    media.load();
+    isSourceAttached = false;
+  };
+
   const showPreview = () => {
+    clearTimeout(showTimer);
+    showTimer = setTimeout(() => {
+      if (activeMediaPreviewHide && activeMediaPreviewHide !== hidePreview) {
+        activeMediaPreviewHide();
+      }
+
+      activeMediaPreviewHide = hidePreview;
+      attachPreviewSource();
+      revealPreview();
+    }, MEDIA_PREVIEW_HOVER_DELAY_MS);
+  };
+  const revealPreview = () => {
     isVisible = true;
     preview.hidden = false;
     positionMediaHoverPreview(anchor, preview);
@@ -232,9 +270,17 @@ function appendMediaHoverPreview(anchor, upload) {
     }
   };
   const hidePreview = () => {
+    clearTimeout(showTimer);
+    showTimer = 0;
     isVisible = false;
+    if (activeMediaPreviewHide === hidePreview) {
+      activeMediaPreviewHide = null;
+    }
+
     if (kind === 'video') {
       media.pause();
+      clearTimeout(releaseTimer);
+      releaseTimer = setTimeout(releaseVideoSource, VIDEO_PREVIEW_RELEASE_DELAY_MS);
     }
     preview.classList.remove('is-visible');
     preview.hidden = true;
@@ -259,6 +305,13 @@ function appendMediaHoverPreview(anchor, upload) {
     anchor.removeEventListener('blur', hidePreview);
     window.removeEventListener('scroll', repositionPreview, true);
     window.removeEventListener('resize', repositionPreview);
+    clearTimeout(showTimer);
+    clearTimeout(releaseTimer);
+    if (activeMediaPreviewHide === hidePreview) {
+      activeMediaPreviewHide = null;
+    }
+
+    releaseVideoSource();
     preview.remove();
   });
 }
