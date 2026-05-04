@@ -2408,7 +2408,7 @@ function getDropboxAuthAttempts(primaryAppKey) {
 
 function isRetryableDropboxAuthError(error) {
   const message = error instanceof Error ? error.message : String(error || '');
-  return /authorization page could not be loaded|invalid_app|invalid redirect_uri|redirect uri|invalid_client/i.test(message);
+  return /authorization page could not be loaded|invalid_app|invalid[_\s-]?redirect[_\s-]?uri|redirect uri|invalid_client/i.test(message);
 }
 
 function assertExpectedOAuthCallbackUrl(callbackUrl, expectedRedirectUrl) {
