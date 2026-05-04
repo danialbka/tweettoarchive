@@ -327,7 +327,7 @@ textarea {
 
 .provider-choice-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.58rem;
 }
 
@@ -380,6 +380,12 @@ textarea {
   border-color: #7ca15e;
   color: #3d7138;
   background: #f5fbf0;
+}
+
+.local-mark {
+  border-color: #9a7a46;
+  color: #765729;
+  background: #fff8e7;
 }
 
 .provider-select-label,
@@ -438,6 +444,15 @@ textarea {
 
 .storage-actions > .action-group:first-child {
   grid-template-columns: 1fr;
+}
+
+.storage-actions.local-storage-actions {
+  grid-template-columns: minmax(10rem, 16rem);
+  justify-content: center;
+}
+
+.storage-actions.local-storage-actions .primary-action-group {
+  display: none;
 }
 
 .primary-action-group {

@@ -106,7 +106,7 @@
             <section class="panel composer">
               <div class="storage-selector" aria-label="Save destination">
                 <p class="selector-label">Save destination</p>
-                <div class="storage-choice-row" role="group" aria-label="Cloud storage destination">
+                <div class="storage-choice-row" role="group" aria-label="Save destination">
                   <button type="button" class="storage-choice" data-storage-choice="dropbox" aria-pressed="false" disabled>
                     <span class="storage-choice-copy">
                       <strong>Dropbox</strong>
@@ -117,6 +117,12 @@
                     <span class="storage-choice-copy">
                       <strong>Google Drive</strong>
                       <span id="googleDriveChoiceStatus">Checking...</span>
+                    </span>
+                  </button>
+                  <button type="button" class="storage-choice" data-storage-choice="local" aria-pressed="false" disabled>
+                    <span class="storage-choice-copy">
+                      <strong>Local</strong>
+                      <span id="localChoiceStatus">Downloads</span>
                     </span>
                   </button>
                 </div>

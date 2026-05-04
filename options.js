@@ -2,6 +2,9 @@
 
 const PROVIDER_DROPBOX = 'dropbox';
 const PROVIDER_GOOGLE_DRIVE = 'google-drive';
+const PROVIDER_LOCAL = 'local';
+const DEFAULT_DROPBOX_APP_KEY = 'cin5t0v25pdshij';
+const DEFAULT_DROPBOX_REDIRECT_URI = 'https://ojicpdlgnoidfggebaifkbcifhamahff.chromiumapp.org/dropbox';
 const GOOGLE_CLIENTS_URL = 'https://console.cloud.google.com/auth/clients';
 const dropboxFolderEl = document.getElementById('dropboxFolder');
 const dropboxFolderFieldEl = document.getElementById('dropboxFolderField');
@@ -37,6 +40,7 @@ const paymentStateEl = document.getElementById('paymentState');
 const paymentMetaEl = document.getElementById('paymentMeta');
 const paymentActionsEl = document.getElementById('paymentActions');
 const saveBtn = document.getElementById('saveBtn');
+const storageActionsEl = saveBtn.closest('.storage-actions');
 const connectBtn = document.getElementById('connectBtn');
 const saveAppKeyBtn = document.getElementById('saveAppKeyBtn');
 const captureXCookiesBtn = document.getElementById('captureXCookiesBtn');
@@ -71,6 +75,7 @@ function getUnlockPlanText(usage) {
 }
 
 function normalizeProvider(value) {
+  if (value === PROVIDER_LOCAL) return PROVIDER_LOCAL;
   return value === PROVIDER_GOOGLE_DRIVE ? PROVIDER_GOOGLE_DRIVE : PROVIDER_DROPBOX;
 }
 
@@ -79,7 +84,10 @@ function getProvider(state = latestState) {
 }
 
 function getProviderLabel(provider) {
-  return normalizeProvider(provider) === PROVIDER_GOOGLE_DRIVE ? 'Google Drive' : 'Dropbox';
+  const normalizedProvider = normalizeProvider(provider);
+  if (normalizedProvider === PROVIDER_GOOGLE_DRIVE) return 'Google Drive';
+  if (normalizedProvider === PROVIDER_LOCAL) return 'Local downloads';
+  return 'Dropbox';
 }
 
 function getSettingsPayload({ dropboxAppKey = dropboxAppKeyEl.value, googleOAuthClientId = '' } = {}) {
@@ -99,6 +107,10 @@ function getSettingsPayload({ dropboxAppKey = dropboxAppKeyEl.value, googleOAuth
 
 function getProviderAuth(state = latestState, provider = getProvider(state)) {
   const normalizedProvider = normalizeProvider(provider);
+  if (normalizedProvider === PROVIDER_LOCAL) {
+    return { connected: true, provider: PROVIDER_LOCAL, accountLabel: 'Local downloads ready' };
+  }
+
   const providerAuth = state?.auths?.[normalizedProvider];
   if (providerAuth) {
     return providerAuth;
@@ -153,17 +165,30 @@ function flash(message) {
   }, 2200);
 }
 
-function getDropboxRedirectUri() {
+function getDropboxRedirectUri(appKey = '') {
+  const normalizedAppKey = appKey.trim();
+  if (normalizedAppKey === DEFAULT_DROPBOX_APP_KEY || (!normalizedAppKey && latestState?.defaultDropboxAppKeyInUse)) {
+    return DEFAULT_DROPBOX_REDIRECT_URI;
+  }
+
   return chrome.identity.getRedirectURL('dropbox');
 }
 
 function getProviderRedirectUri(provider) {
+  if (normalizeProvider(provider) === PROVIDER_LOCAL) {
+    return '';
+  }
+
   return normalizeProvider(provider) === PROVIDER_GOOGLE_DRIVE
     ? chrome.identity.getRedirectURL()
-    : getDropboxRedirectUri();
+    : getDropboxRedirectUri(dropboxAppKeyEl.value);
 }
 
 function getProviderRedirectHint(provider) {
+  if (normalizeProvider(provider) === PROVIDER_LOCAL) {
+    return 'Local downloads do not need a cloud Redirect URI.';
+  }
+
   return normalizeProvider(provider) === PROVIDER_GOOGLE_DRIVE
     ? 'Add this exact Redirect URI to your Google Web OAuth client.'
     : 'Add this exact Redirect URI in your Dropbox app settings, including the `/dropbox` path.';
@@ -234,8 +259,10 @@ function getFriendlyConnectError(provider, error) {
 function syncAppKeyUi() {
   const isDropbox = getProvider() === PROVIDER_DROPBOX;
   const isGoogleDrive = getProvider() === PROVIDER_GOOGLE_DRIVE;
+  const isLocal = getProvider() === PROVIDER_LOCAL;
   const hasSavedAppKey = Boolean(latestState?.appKeySaved);
   const hasTypedAppKey = Boolean(dropboxAppKeyEl.value.trim());
+  const isUsingDefaultDropboxAppKey = Boolean(latestState?.defaultDropboxAppKeyInUse) && !hasTypedAppKey;
   const hasSavedGoogleClientId = Boolean(latestState?.customGoogleOAuthClientIdSaved);
   const hasTypedGoogleClientId = Boolean(googleOAuthClientIdEl.value.trim());
 
@@ -243,11 +270,18 @@ function syncAppKeyUi() {
     dropboxAppKeyFieldEl.hidden = !isDropbox;
   }
   appKeyStatusEl.hidden = !isDropbox || !hasSavedAppKey || hasTypedAppKey;
-  appKeyStatusLabelEl.textContent = hasSavedAppKey ? 'Dropbox app key saved' : '';
-  googleOAuthStatusEl.hidden = !isGoogleDrive || hasTypedGoogleClientId;
+  appKeyStatusLabelEl.textContent = isUsingDefaultDropboxAppKey
+    ? 'Using included Dropbox app key'
+    : hasSavedAppKey
+      ? 'Dropbox app key saved'
+      : '';
+  googleOAuthStatusEl.hidden = !isGoogleDrive || isLocal || hasTypedGoogleClientId;
   googleOAuthStatusLabelEl.textContent = hasSavedGoogleClientId
     ? 'Custom Google OAuth saved'
     : 'Using included Google OAuth';
+  if (isDropbox) {
+    redirectUriEl.value = getDropboxRedirectUri(dropboxAppKeyEl.value);
+  }
   saveAppKeyActionsEl.hidden = false;
   saveAppKeyBtn.textContent = 'Save OAuth settings';
 }
@@ -257,17 +291,19 @@ function renderState(state) {
   const isPaid = Boolean(state.usage?.paid);
   const provider = getProvider(state);
   const isGoogleDrive = provider === PROVIDER_GOOGLE_DRIVE;
+  const isLocal = provider === PROVIDER_LOCAL;
   const providerLabel = getProviderLabel(provider);
   const selectedAuth = getProviderAuth(state, provider);
   storageProviderEl.value = provider;
   syncProviderChoiceButtons(provider);
-  dropboxFolderFieldEl.hidden = isGoogleDrive;
-  googleDriveFolderFieldEl.hidden = !isGoogleDrive;
-  redirectUriFieldEl.hidden = false;
-  redirectUriHintEl.hidden = false;
+  dropboxFolderFieldEl.hidden = isGoogleDrive || isLocal;
+  googleDriveFolderFieldEl.hidden = !isGoogleDrive || isLocal;
+  remoteFolderOptionsEl.closest('label').hidden = isLocal;
+  redirectUriFieldEl.hidden = isLocal;
+  redirectUriHintEl.hidden = isLocal;
   googleAuthHintEl.hidden = !isGoogleDrive;
-  dropboxAdvancedHintEl.hidden = isGoogleDrive;
-  appKeyHintEl.hidden = isGoogleDrive;
+  dropboxAdvancedHintEl.hidden = isGoogleDrive || isLocal;
+  appKeyHintEl.hidden = isGoogleDrive || isLocal;
   dropboxFolderEl.value = state.settings.dropboxFolder;
   googleDriveFolderNameEl.value = state.settings.googleDriveFolderName || 'Tweet Media Archive';
   remoteFolderOptionsEl.value = (state.settings.remoteFolderOptions || []).join('\n');
@@ -275,7 +311,9 @@ function renderState(state) {
   redirectUriHintEl.textContent = getProviderRedirectHint(provider);
   dropboxAppKeyEl.value = '';
   dropboxAppKeyEl.placeholder = state.appKeySaved
-    ? 'Saved on this device. Paste a new app key to replace it.'
+    ? state.defaultDropboxAppKeyInUse
+      ? 'Using included Dropbox app key'
+      : 'Saved on this device. Paste a new app key to replace it.'
     : 'your Dropbox app key';
   googleOAuthClientIdEl.value = '';
   googleOAuthClientIdEl.placeholder = state.customGoogleOAuthClientIdSaved
@@ -283,10 +321,13 @@ function renderState(state) {
     : 'Use included Google OAuth client';
   autoStartEl.checked = state.settings.autoStartOnPaste;
   overwriteEl.checked = state.settings.overwriteExisting;
-  saveLocalCopiesEl.checked = state.settings.saveLocalCopies;
+  saveLocalCopiesEl.checked = isLocal || state.settings.saveLocalCopies;
+  saveLocalCopiesEl.disabled = isLocal;
   localDownloadFolderEl.value = state.settings.localDownloadFolder;
   appKeyHintEl.textContent = state.appKeySaved
-    ? 'An app key is saved on this device with local encryption. Paste a new one only if you want to replace it.'
+    ? state.defaultDropboxAppKeyInUse
+      ? 'The included Dropbox app key uses the fixed Redirect URI shown above. Paste your own app key only if you want to use a separate Dropbox app.'
+      : 'An app key is saved on this device with local encryption. Paste a new one only if you want to replace it.'
     : 'Paste an app key here only if you need it for Dropbox setup.';
   googleAuthHintEl.textContent = state.googleAuthConfigured
     ? 'Leave blank to keep using the included Google OAuth client. Saving a custom client ID will require reconnecting Google Drive.'
@@ -298,10 +339,12 @@ function renderState(state) {
   instagramAccountStatusEl.hidden = !state.instagramCookiesSaved;
   instagramAccountStatusLabelEl.textContent = state.instagramCookiesSaved ? 'Instagram account connected' : '';
   clearInstagramCookiesBtn.hidden = !state.instagramCookiesSaved;
-  connectBtn.hidden = false;
+  connectBtn.hidden = isLocal;
   connectBtn.textContent = `Connect ${providerLabel}`;
   clearBtn.textContent = `Disconnect ${providerLabel}`;
-  clearBtn.disabled = !selectedAuth.connected;
+  clearBtn.hidden = isLocal;
+  clearBtn.disabled = isLocal || !selectedAuth.connected;
+  storageActionsEl.classList.toggle('local-storage-actions', isLocal);
   paymentStateEl.textContent = isPaid
     ? `Unlimited uploads unlocked${state.usage?.paymentEmail ? ` for ${state.usage.paymentEmail}` : '.'}`
     : `${state.usage?.remainingFreeUploads ?? 0} of ${state.usage?.freeUploadLimit ?? 30} free uploads remaining.`;
@@ -314,7 +357,9 @@ function renderState(state) {
   unlockBtn.textContent = isPaid ? 'Manage subscription' : getUnlockButtonText(state.usage);
   restoreBtn.textContent = 'Restore purchase';
 
-  if (selectedAuth.connected) {
+  if (isLocal) {
+    authStateEl.textContent = 'Local downloads are ready. Files save into your browser Downloads folder.';
+  } else if (selectedAuth.connected) {
     authStateEl.textContent = `${selectedAuth.accountLabel || `${providerLabel} connected`}.`;
   } else if (isGoogleDrive) {
     authStateEl.textContent = state.googleAuthConfigured
@@ -322,7 +367,9 @@ function renderState(state) {
       : 'Save a Web OAuth client ID in Advanced setup, then connect Google Drive.';
   } else {
     authStateEl.textContent = state.appKeySaved
-      ? 'App key saved. Finish connecting from the main popup.'
+      ? state.defaultDropboxAppKeyInUse
+        ? 'Included Dropbox app key ready. Finish connecting from the main popup.'
+        : 'App key saved. Finish connecting from the main popup.'
       : 'Click Connect Dropbox and we will send you to Dropbox login first, then to app setup so you can get your app key.';
   }
 }
@@ -359,6 +406,9 @@ saveBtn.addEventListener('click', async () => {
 });
 
 dropboxAppKeyEl.addEventListener('input', () => {
+  if (getProvider() === PROVIDER_DROPBOX) {
+    redirectUriEl.value = getDropboxRedirectUri(dropboxAppKeyEl.value);
+  }
   syncAppKeyUi();
 });
 
@@ -479,6 +529,11 @@ clearInstagramCookiesBtn.addEventListener('click', async () => {
 connectBtn.addEventListener('click', async () => {
   const provider = normalizeProvider(storageProviderEl.value);
   const providerLabel = getProviderLabel(provider);
+  if (provider === PROVIDER_LOCAL) {
+    flash('Local downloads do not need a connection.');
+    return;
+  }
+
   const typedAppKey = dropboxAppKeyEl.value.trim();
   const hasAppKey = Boolean(latestState?.appKeySaved || typedAppKey);
   if (provider === PROVIDER_DROPBOX && !hasAppKey) {
@@ -517,6 +572,11 @@ connectBtn.addEventListener('click', async () => {
 
 clearBtn.addEventListener('click', async () => {
   const provider = normalizeProvider(storageProviderEl.value);
+  if (provider === PROVIDER_LOCAL) {
+    flash('Local downloads do not have a cloud connection to clear.');
+    return;
+  }
+
   setBusy(true);
   try {
     await sendMessage({

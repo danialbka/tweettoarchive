@@ -2,7 +2,7 @@
 
 # Tweet Media Archive
 
-Tweet Media Archive is a Chrome MV3 extension for saving social media and direct media links into your own cloud storage. Connect Dropbox or Google Drive once, paste supported URLs into the popup, and the extension resolves the media files, uploads them, and keeps a local upload history.
+Tweet Media Archive is a Chrome MV3 extension for saving social media and direct media links into your own storage. Connect Dropbox or Google Drive, or choose local Downloads only, then paste supported URLs into the popup. The extension resolves the media files, saves them, and keeps a local upload history.
 
 The public source checkout includes 30 free successful URL uploads. Official packaged releases may include the separately distributed payment bridge used to unlock paid plans, updates, and support.
 
@@ -15,6 +15,7 @@ The public source checkout includes 30 free successful URL uploads. Official pac
 - Direct image and video URLs
 - Dropbox uploads with OAuth and refresh-token support
 - Google Drive uploads with the `drive.file` OAuth scope
+- Local-only saves into the browser Downloads folder
 - Optional signed-in X and Instagram cookie capture for posts that require account access
 - Local upload history, active upload progress, pause/resume, retry, and hover previews
 - Optional local Downloads copy alongside cloud upload
@@ -23,11 +24,11 @@ The public source checkout includes 30 free successful URL uploads. Official pac
 
 The popup and options pages send trusted extension-page messages to `background.js`. The service worker owns the core workflow:
 
-1. Read settings, payment state, cloud auth, saved sessions, and upload history from Chrome storage.
+1. Read settings, payment state, storage auth when needed, saved sessions, and upload history from Chrome storage.
 2. Expand supported page URLs into media-bearing post URLs where needed.
 3. Resolve each URL to downloadable image or video sources.
 4. Download media bytes directly from the source host.
-5. Upload to the selected provider, creating the target folder when needed.
+5. Save to the selected destination, creating the target cloud folder when needed.
 6. Record successful uploads and surface live progress in the popup and history window.
 
 No build step is required. This repo is the unpacked extension source.
@@ -39,7 +40,7 @@ No build step is required. This repo is the unpacked extension source.
 3. Click `Load unpacked`.
 4. Select this project folder.
 5. Open the extension `Options` page.
-6. Choose Dropbox or Google Drive, save settings, and connect storage.
+6. Choose Dropbox, Google Drive, or Local downloads only. Cloud providers need a connection; Local downloads only is ready after saving settings.
 
 ## Dropbox Setup
 

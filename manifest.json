@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tweet Media Archive",
-  "description": "Archive media from X, Twitter, and Instagram straight to Dropbox or Google Drive.",
+  "description": "Archive media from X, Twitter, and Instagram to Dropbox, Google Drive, or local Downloads.",
   "version": "0.1.6",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjUYFvDQT7Sb+jVj93ytGymFZsQkRGMu+XF4hal4iKN0ikS6CD8dKZ4TLVXV5lV/dMLtYAf0GKyQXce90ilOSQ5fwCLqh6OY1ZmWN0iIwnyWYwwksASB4hBYYsLKaD4hiXcuWHk3TeyLihld4ftHXbF3ehpFpbpzvM1wFkvSSkooMgiayUn/xhlSnnAq1kose01Q//Oyxiu1VtaQ9W82tj47CTM37HGYLf1WRFvxorlKYFcKaKmuaA2jDIyYnuttk6YVXtDyqY86P7Tjc+blT1I3925ZXopMzIg2vhuyR/gFxMbqYqndKu9Px28yNqsCGbCDaf+mRwWCLSrCCRYQV3QIDAQAB",
   "permissions": [

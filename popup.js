@@ -21,6 +21,7 @@ const paymentActionsEl = document.getElementById('paymentActions');
 const storageChoiceBtns = Array.from(document.querySelectorAll('[data-storage-choice]'));
 const dropboxChoiceStatusEl = document.getElementById('dropboxChoiceStatus');
 const googleDriveChoiceStatusEl = document.getElementById('googleDriveChoiceStatus');
+const localChoiceStatusEl = document.getElementById('localChoiceStatus');
 const urlInputEl = document.getElementById('urlInput');
 const folderSelectFieldEl = document.getElementById('folderSelectField');
 const folderSelectEl = document.getElementById('folderSelect');
@@ -40,7 +41,7 @@ const restoreBtn = document.getElementById('restoreBtn');
 const paymentDismissBtn = document.getElementById('paymentDismissBtn');
 const toastEl = document.getElementById('toast');
 const pageBody = document.body;
-const POPUP_WIDTH_PX = 400;
+const POPUP_WIDTH_PX = 520;
 const HISTORY_WINDOW_URL = chrome.runtime.getURL('history.html');
 const UPLOAD_COMPLETE_HOLD_MS = 1000;
 let latestState = null;
@@ -54,6 +55,7 @@ const DROPBOX_LOGIN_URL = 'https://www.dropbox.com/login';
 const GOOGLE_CLIENTS_URL = 'https://console.cloud.google.com/auth/clients';
 const PROVIDER_DROPBOX = 'dropbox';
 const PROVIDER_GOOGLE_DRIVE = 'google-drive';
+const PROVIDER_LOCAL = 'local';
 const PAID_PAYMENT_BANNER_SEEN_PREFIX = 'tweet_media_archive_paid_banner_seen_';
 
 function getUnlockButtonText(usage) {
@@ -106,17 +108,27 @@ function dismissPaidPaymentBanner() {
 }
 
 function getProvider(state = latestState) {
-  return state?.settings?.storageProvider === PROVIDER_GOOGLE_DRIVE
-    ? PROVIDER_GOOGLE_DRIVE
-    : PROVIDER_DROPBOX;
+  if (state?.settings?.storageProvider === PROVIDER_GOOGLE_DRIVE) return PROVIDER_GOOGLE_DRIVE;
+  if (state?.settings?.storageProvider === PROVIDER_LOCAL) return PROVIDER_LOCAL;
+  return PROVIDER_DROPBOX;
 }
 
 function getProviderLabel(provider) {
-  return provider === PROVIDER_GOOGLE_DRIVE ? 'Google Drive' : 'Dropbox';
+  if (provider === PROVIDER_GOOGLE_DRIVE) return 'Google Drive';
+  if (provider === PROVIDER_LOCAL) return 'Local';
+  return 'Dropbox';
 }
 
 function getProviderAuth(state = latestState, provider = getProvider(state)) {
-  const normalizedProvider = provider === PROVIDER_GOOGLE_DRIVE ? PROVIDER_GOOGLE_DRIVE : PROVIDER_DROPBOX;
+  const normalizedProvider = provider === PROVIDER_GOOGLE_DRIVE
+    ? PROVIDER_GOOGLE_DRIVE
+    : provider === PROVIDER_LOCAL
+      ? PROVIDER_LOCAL
+      : PROVIDER_DROPBOX;
+  if (normalizedProvider === PROVIDER_LOCAL) {
+    return { connected: true, provider: PROVIDER_LOCAL, accountLabel: 'Local downloads ready' };
+  }
+
   const providerAuth = state?.auths?.[normalizedProvider];
   if (providerAuth) {
     return providerAuth;
@@ -135,6 +147,10 @@ function isProviderConnected(state = latestState, provider = getProvider(state))
 }
 
 function isProviderSetupReady(state = latestState, provider = getProvider(state)) {
+  if (provider === PROVIDER_LOCAL) {
+    return true;
+  }
+
   return provider === PROVIDER_GOOGLE_DRIVE
     ? Boolean(state?.googleAuthConfigured)
     : Boolean(state?.appKeySaved);
@@ -229,18 +245,18 @@ function buildUploadToast(summary) {
   const firstFailure = failedResults[0]?.error || '';
 
   if (successfulInputs > 0 && failedInputs === 0) {
-    return `Uploaded ${successfulInputs} link${successfulInputs === 1 ? '' : 's'}.`;
+    return `Saved ${successfulInputs} link${successfulInputs === 1 ? '' : 's'}.`;
   }
 
   if (successfulInputs > 0 && failedInputs > 0) {
-    return `Uploaded ${successfulInputs} of ${totalInputs} links. ${firstFailure || `${failedInputs} failed.`}`;
+    return `Saved ${successfulInputs} of ${totalInputs} links. ${firstFailure || `${failedInputs} failed.`}`;
   }
 
   if (failedInputs > 0) {
     return firstFailure || `Could not upload ${failedInputs} link${failedInputs === 1 ? '' : 's'}.`;
   }
 
-  return 'Nothing was uploaded.';
+  return 'Nothing was saved.';
 }
 
 function getFriendlyConnectError(provider, error) {
@@ -424,6 +440,10 @@ function openGoogleClientSetup() {
 }
 
 function formatChoiceStatus(state, provider) {
+  if (provider === PROVIDER_LOCAL) {
+    return 'Downloads';
+  }
+
   const auth = getProviderAuth(state, provider);
   if (auth?.connected) {
     return 'Connected';
@@ -441,12 +461,15 @@ function syncStorageSelector(state) {
   storageChoiceBtns.forEach((button) => {
     const choiceProvider = button.dataset.storageChoice === PROVIDER_GOOGLE_DRIVE
       ? PROVIDER_GOOGLE_DRIVE
-      : PROVIDER_DROPBOX;
+      : button.dataset.storageChoice === PROVIDER_LOCAL
+        ? PROVIDER_LOCAL
+        : PROVIDER_DROPBOX;
     button.setAttribute('aria-pressed', choiceProvider === provider ? 'true' : 'false');
   });
 
   dropboxChoiceStatusEl.textContent = formatChoiceStatus(state, PROVIDER_DROPBOX);
   googleDriveChoiceStatusEl.textContent = formatChoiceStatus(state, PROVIDER_GOOGLE_DRIVE);
+  localChoiceStatusEl.textContent = formatChoiceStatus(state, PROVIDER_LOCAL);
 }
 
 function syncSetupBanner(state) {
@@ -482,6 +505,11 @@ function syncSetupBanner(state) {
 }
 
 function formatLocalFolder(settings) {
+  if (getProvider({ settings }) === PROVIDER_LOCAL) {
+    const folder = String(settings.localDownloadFolder || '').trim();
+    return folder ? `Downloads/${folder}` : 'Downloads';
+  }
+
   if (!settings?.saveLocalCopies) {
     return `${getProviderLabel(getProvider({ settings }))} only`;
   }
@@ -491,6 +519,11 @@ function formatLocalFolder(settings) {
 }
 
 function getRemoteFolderLabel(settings) {
+  if (getProvider({ settings }) === PROVIDER_LOCAL) {
+    const folder = String(settings?.localDownloadFolder || '').trim();
+    return folder ? `Downloads/${folder}` : 'Downloads';
+  }
+
   return getProvider({ settings }) === PROVIDER_GOOGLE_DRIVE
     ? (settings?.googleDriveFolderName || 'Tweet Media Archive')
     : (settings?.dropboxFolder || '/');
@@ -504,6 +537,10 @@ function normalizeEditableRemoteFolder(provider, value) {
     .filter(Boolean)
     .filter((segment) => segment !== '.' && segment !== '..');
 
+  if (provider === PROVIDER_LOCAL) {
+    return segments.join('/') || 'Tweet Media Archive';
+  }
+
   if (provider === PROVIDER_GOOGLE_DRIVE) {
     return segments.join('/') || 'Tweet Media Archive';
   }
@@ -513,6 +550,10 @@ function normalizeEditableRemoteFolder(provider, value) {
 
 function getRemoteFolderOptions(settings) {
   const provider = getProvider({ settings });
+  if (provider === PROVIDER_LOCAL) {
+    return [];
+  }
+
   const currentFolder = normalizeEditableRemoteFolder(provider, getRemoteFolderLabel(settings));
   const options = Array.isArray(settings?.remoteFolderOptions) ? settings.remoteFolderOptions : [];
   const seen = new Set();
@@ -552,9 +593,13 @@ function startFolderEdit() {
   }
 
   const provider = getProvider(latestState);
-  folderInputEl.value = getRemoteFolderLabel(latestState.settings);
+  folderInputEl.value = provider === PROVIDER_LOCAL
+    ? (latestState.settings.localDownloadFolder || '')
+    : getRemoteFolderLabel(latestState.settings);
   folderInputEl.dataset.originalValue = folderInputEl.value;
-  folderInputEl.placeholder = provider === PROVIDER_GOOGLE_DRIVE ? 'Tweet Media Archive' : '/Twitter Imports';
+  folderInputEl.placeholder = provider === PROVIDER_LOCAL
+    ? 'Tweet Media Archive'
+    : provider === PROVIDER_GOOGLE_DRIVE ? 'Tweet Media Archive' : '/Twitter Imports';
   setFolderEditorVisible(true);
   folderInputEl.focus();
   folderInputEl.select();
@@ -582,7 +627,9 @@ async function saveFolderEdit() {
 
   const nextSettings = {
     ...latestState.settings,
-    ...(provider === PROVIDER_GOOGLE_DRIVE
+    ...(provider === PROVIDER_LOCAL
+      ? { localDownloadFolder: nextFolder }
+      : provider === PROVIDER_GOOGLE_DRIVE
       ? { googleDriveFolderName: nextFolder }
       : { dropboxFolder: nextFolder })
   };
@@ -661,6 +708,12 @@ function renderStatusIndicator(state) {
   statusDotEl.classList.toggle('warning', !connected);
 
   if (connected) {
+    if (provider === PROVIDER_LOCAL) {
+      statusIndicatorLabelEl.textContent = 'Local downloads ready';
+      statusIndicatorHintEl.textContent = `${folder} • ${usage.paid ? 'unlimited' : `${usage.remainingFreeUploads} free left`}`;
+      return;
+    }
+
     if (usage.paid) {
       statusIndicatorLabelEl.textContent = `${label} connected`;
       statusIndicatorHintEl.textContent = `${folder} • unlimited`;
@@ -838,7 +891,7 @@ function requestRefreshState() {
 async function startUpload() {
   const provider = getProvider(latestState);
   const label = getProviderLabel(provider);
-  if (!isProviderConnected(latestState, provider)) {
+  if (provider !== PROVIDER_LOCAL && !isProviderConnected(latestState, provider)) {
     showToast(isProviderSetupReady(latestState, provider)
       ? `Click Connect ${label} first.`
       : `Connect ${label} first.`);
@@ -902,7 +955,7 @@ async function maybeStartUploadAfterPaste() {
     return;
   }
 
-  if (!isProviderConnected(latestState, getProvider(latestState))) {
+  if (getProvider(latestState) !== PROVIDER_LOCAL && !isProviderConnected(latestState, getProvider(latestState))) {
     const provider = getProvider(latestState);
     const label = getProviderLabel(provider);
     showToast(isProviderSetupReady(latestState, provider)
@@ -980,6 +1033,11 @@ captureInstagramCookiesBtn.addEventListener('click', async () => {
 connectBtn.addEventListener('click', async () => {
   const provider = getProvider(latestState);
   const label = getProviderLabel(provider);
+  if (provider === PROVIDER_LOCAL) {
+    showToast('Local downloads are ready.');
+    return;
+  }
+
   if (!isProviderSetupReady(latestState, provider)) {
     if (provider === PROVIDER_GOOGLE_DRIVE) {
       openGoogleClientSetup();
@@ -1015,7 +1073,9 @@ storageChoiceBtns.forEach((button) => {
   button.addEventListener('click', async () => {
     const provider = button.dataset.storageChoice === PROVIDER_GOOGLE_DRIVE
       ? PROVIDER_GOOGLE_DRIVE
-      : PROVIDER_DROPBOX;
+      : button.dataset.storageChoice === PROVIDER_LOCAL
+        ? PROVIDER_LOCAL
+        : PROVIDER_DROPBOX;
     if (!latestState?.settings || provider === getProvider(latestState) || uploadInFlight) {
       return;
     }

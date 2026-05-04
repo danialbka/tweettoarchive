@@ -13,7 +13,7 @@
 
       <section class="window-shell">
         <header class="window-titlebar">
-          <p class="window-title">Set up cloud storage</p>
+          <p class="window-title">Set up storage</p>
           <nav class="breadcrumb" aria-label="Breadcrumb">
             <a href="popup.html">Main</a>
             <span aria-hidden="true">/</span>
@@ -117,7 +117,7 @@
           <section class="main-column">
             <header class="page-hero panel">
               <p class="hero-kicker">welcome +</p>
-              <h1>Set up cloud storage</h1>
+              <h1>Set up storage</h1>
             </header>
 
             <section class="panel storage-panel">
@@ -144,6 +144,13 @@
                       <span>Use Google sign-in and a Drive folder name</span>
                     </span>
                   </button>
+                  <button type="button" class="provider-choice" data-provider-choice="local" aria-pressed="false">
+                    <span class="provider-mark local-mark" aria-hidden="true">L</span>
+                    <span>
+                      <strong>Local</strong>
+                      <span>Save straight into your Downloads folder</span>
+                    </span>
+                  </button>
                 </div>
 
                 <label class="provider-select-label">
@@ -151,6 +158,7 @@
                   <select id="storageProvider">
                     <option value="dropbox">Dropbox</option>
                     <option value="google-drive">Google Drive</option>
+                    <option value="local">Local downloads only</option>
                   </select>
                 </label>
               </div>

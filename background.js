@@ -1,5 +1,46 @@
 /* global chrome, importScripts, ExtPay */
 
+function useProductionExtPayInstallType() {
+  const getSelf = chrome?.management?.getSelf;
+  if (typeof getSelf !== 'function') {
+    return;
+  }
+
+  const normalizeInstallInfo = (info) => info?.installType === 'development'
+    ? { ...info, installType: 'normal' }
+    : info;
+  const originalGetSelf = getSelf.bind(chrome.management);
+
+  chrome.management.getSelf = (callback) => {
+    if (typeof callback === 'function') {
+      return originalGetSelf((info) => callback(normalizeInstallInfo(info)));
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const maybePromise = originalGetSelf((info) => {
+          const runtimeError = chrome.runtime.lastError;
+          if (runtimeError) {
+            reject(new Error(runtimeError.message));
+            return;
+          }
+          resolve(normalizeInstallInfo(info));
+        });
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then(
+            (info) => resolve(normalizeInstallInfo(info)),
+            reject
+          );
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+}
+
+useProductionExtPayInstallType();
+
 try {
   // Official packaged builds may inject this optional payment bridge.
   importScripts('vendor/ExtPay.js');
@@ -19,7 +60,9 @@ const SECURE_DB_STORE = 'crypto';
 const SECURE_DB_KEY = 'auth_key_v1';
 const PROVIDER_DROPBOX = 'dropbox';
 const PROVIDER_GOOGLE_DRIVE = 'google-drive';
-const STORAGE_PROVIDERS = [PROVIDER_DROPBOX, PROVIDER_GOOGLE_DRIVE];
+const PROVIDER_LOCAL = 'local';
+const STORAGE_PROVIDERS = [PROVIDER_DROPBOX, PROVIDER_GOOGLE_DRIVE, PROVIDER_LOCAL];
+const CLOUD_STORAGE_PROVIDERS = [PROVIDER_DROPBOX, PROVIDER_GOOGLE_DRIVE];
 const DROPBOX_AUTHORIZE_URL = 'https://www.dropbox.com/oauth2/authorize';
 const DROPBOX_TOKEN_URL = 'https://api.dropboxapi.com/oauth2/token';
 const DROPBOX_ACCOUNT_URL = 'https://api.dropboxapi.com/2/users/get_current_account';
@@ -28,6 +71,8 @@ const DROPBOX_UPLOAD_URL = 'https://content.dropboxapi.com/2/files/upload';
 const DROPBOX_UPLOAD_SESSION_START_URL = 'https://content.dropboxapi.com/2/files/upload_session/start';
 const DROPBOX_UPLOAD_SESSION_APPEND_URL = 'https://content.dropboxapi.com/2/files/upload_session/append_v2';
 const DROPBOX_UPLOAD_SESSION_FINISH_URL = 'https://content.dropboxapi.com/2/files/upload_session/finish';
+const DEFAULT_DROPBOX_APP_KEY = 'cin5t0v25pdshij';
+const DEFAULT_DROPBOX_REDIRECT_URL = 'https://ojicpdlgnoidfggebaifkbcifhamahff.chromiumapp.org/dropbox';
 const GOOGLE_OAUTH_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_DRIVE_ABOUT_URL = 'https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress)';
@@ -221,6 +266,10 @@ function clampString(value, fallback = '') {
 }
 
 function normalizeRemoteFolderOptions(value, provider) {
+  if (provider === PROVIDER_LOCAL) {
+    return [];
+  }
+
   const rawOptions = Array.isArray(value)
     ? value
     : String(value || '').split(/\r?\n/);
@@ -255,7 +304,7 @@ function normalizeSettings(raw) {
     ),
     autoStartOnPaste: Boolean(merged.autoStartOnPaste),
     overwriteExisting: Boolean(merged.overwriteExisting),
-    saveLocalCopies: Boolean(merged.saveLocalCopies),
+    saveLocalCopies: storageProvider === PROVIDER_LOCAL || Boolean(merged.saveLocalCopies),
     localDownloadFolder: normalizeLocalDownloadFolder(merged.localDownloadFolder, DEFAULT_SETTINGS.localDownloadFolder),
     remoteFolderOptions: normalizeRemoteFolderOptions(merged.remoteFolderOptions, storageProvider)
   };
@@ -952,7 +1001,7 @@ async function getDropboxAppKey() {
     return clampString(decrypted, '');
   }
 
-  return migrateLegacyDropboxAppKey();
+  return (await migrateLegacyDropboxAppKey()) || DEFAULT_DROPBOX_APP_KEY;
 }
 
 async function hasCustomGoogleOAuthClientId() {
@@ -1035,7 +1084,7 @@ async function parseStoredAuthRecord(rawAuth, fallbackProvider) {
 
 async function writeAuthStore(authsByProvider) {
   const providers = {};
-  for (const provider of STORAGE_PROVIDERS) {
+  for (const provider of CLOUD_STORAGE_PROVIDERS) {
     const auth = authsByProvider?.[provider];
     if (auth?.accessToken) {
       providers[provider] = await buildStoredAuthRecord({
@@ -1068,7 +1117,7 @@ async function getAuthStore() {
   }
 
   if (rawAuth.providers && typeof rawAuth.providers === 'object') {
-    for (const provider of STORAGE_PROVIDERS) {
+    for (const provider of CLOUD_STORAGE_PROVIDERS) {
       const auth = await parseStoredAuthRecord(rawAuth.providers[provider], provider);
       if (auth?.accessToken) {
         providers[provider] = auth;
@@ -1911,7 +1960,9 @@ function isGoogleDriveAuthError(error) {
 }
 
 function normalizeStorageProvider(value) {
-  return value === PROVIDER_GOOGLE_DRIVE ? PROVIDER_GOOGLE_DRIVE : PROVIDER_DROPBOX;
+  if (value === PROVIDER_GOOGLE_DRIVE) return PROVIDER_GOOGLE_DRIVE;
+  if (value === PROVIDER_LOCAL) return PROVIDER_LOCAL;
+  return PROVIDER_DROPBOX;
 }
 
 function normalizeDropboxFolder(input) {
@@ -2330,6 +2381,12 @@ function buildDropboxAuthUrl(appKey, redirectUrl, codeChallenge, { forceReauthen
     url.searchParams.set('state', state);
   }
   return url.toString();
+}
+
+function getDropboxRedirectUrl(appKey) {
+  return appKey === DEFAULT_DROPBOX_APP_KEY
+    ? DEFAULT_DROPBOX_REDIRECT_URL
+    : chrome.identity.getRedirectURL('dropbox');
 }
 
 function assertExpectedOAuthCallbackUrl(callbackUrl, expectedRedirectUrl) {
@@ -3484,7 +3541,7 @@ async function connectDropbox() {
     throw new Error('Add your Dropbox app key in Options before connecting.');
   }
 
-  const redirectUrl = chrome.identity.getRedirectURL('dropbox');
+  const redirectUrl = getDropboxRedirectUrl(appKey);
   const codeVerifier = createCodeVerifier();
   const codeChallenge = await createCodeChallenge(codeVerifier);
   const state = createCodeVerifier();
@@ -3709,7 +3766,7 @@ async function getValidatedAuthSummary(provider) {
 
 async function getValidatedAuthSummaries() {
   const summaries = {};
-  for (const provider of STORAGE_PROVIDERS) {
+  for (const provider of CLOUD_STORAGE_PROVIDERS) {
     summaries[provider] = await getValidatedAuthSummary(provider);
   }
   return summaries;
@@ -3717,7 +3774,7 @@ async function getValidatedAuthSummaries() {
 
 async function getStoredAuthSummaries() {
   const summaries = {};
-  for (const provider of STORAGE_PROVIDERS) {
+  for (const provider of CLOUD_STORAGE_PROVIDERS) {
     summaries[provider] = authSummary(await getAuth(provider));
   }
   return summaries;
@@ -6021,6 +6078,7 @@ async function processSingleInput(inputUrl, settings, storage, onProgress = null
     let remoteSize = 0;
     let filename = provisionalFilename;
     let mediaContentType = item.contentType || '';
+    const isLocalOnly = storage.provider === PROVIDER_LOCAL;
 
     if (shouldStreamRemoteUpload(item)) {
       const contentType = item.contentType || 'application/octet-stream';
@@ -6029,7 +6087,9 @@ async function processSingleInput(inputUrl, settings, storage, onProgress = null
       filename = baseName.includes('.') ? baseName : `${baseName}.${resolvedExtension}`;
       await throwIfCanceled();
 
-      if (storage.provider === PROVIDER_GOOGLE_DRIVE) {
+      if (isLocalOnly) {
+        remoteSize = getRemoteStreamContentLength(item);
+      } else if (storage.provider === PROVIDER_GOOGLE_DRIVE) {
         const upload = await uploadRemoteToGoogleDrive({
           accessToken: storage.accessToken,
           settings,
@@ -6058,6 +6118,17 @@ async function processSingleInput(inputUrl, settings, storage, onProgress = null
         remoteUrl = buildDropboxWebUrl(remotePath);
         remoteSize = Number(metadata.size || getRemoteStreamContentLength(item));
       }
+    } else if (isLocalOnly) {
+      const resolvedExtension = extractExtensionFromUrl(
+        item.sourceUrl,
+        guessExtensionFromContentType(item.contentType || '')
+      );
+      filename = baseName.includes('.') ? baseName : `${baseName}.${resolvedExtension}`;
+      mediaContentType = item.contentType || guessContentTypeFromExtension(resolvedExtension);
+      remoteSize = getRemoteStreamContentLength(item);
+      if (reportUploadProgress) {
+        await reportUploadProgress(filename);
+      }
     } else {
       const binary = await fetchBinary(item.sourceUrl, {
         referrerUrl: item.referrerUrl || '',
@@ -6071,7 +6142,6 @@ async function processSingleInput(inputUrl, settings, storage, onProgress = null
       if (reportUploadProgress) {
         await reportUploadProgress(filename);
       }
-
       if (storage.provider === PROVIDER_GOOGLE_DRIVE) {
         const upload = await uploadToGoogleDrive({
           accessToken: storage.accessToken,
@@ -6106,7 +6176,7 @@ async function processSingleInput(inputUrl, settings, storage, onProgress = null
 
     let localSavedPath = '';
     let localDownloadError = '';
-    if (settings.saveLocalCopies) {
+    if (isLocalOnly || settings.saveLocalCopies) {
       localSavedPath = joinLocalDownloadPath(settings.localDownloadFolder, filename);
       try {
         await startLocalDownload({
@@ -6208,9 +6278,11 @@ async function runUploadUrls(rawText) {
 
   const settings = await getSettings();
   const provider = normalizeStorageProvider(settings.storageProvider);
-  const accessToken = provider === PROVIDER_GOOGLE_DRIVE
-    ? await ensureGoogleDriveAccessToken()
-    : await ensureDropboxAccessToken();
+  const accessToken = provider === PROVIDER_LOCAL
+    ? ''
+    : provider === PROVIDER_GOOGLE_DRIVE
+      ? await ensureGoogleDriveAccessToken()
+      : await ensureDropboxAccessToken();
   const storage = {
     provider,
     accessToken
@@ -6387,9 +6459,11 @@ async function retryActiveUploadItem(sessionId, inputUrl) {
 
   const settings = await getSettings();
   const provider = normalizeStorageProvider(settings.storageProvider);
-  const accessToken = provider === PROVIDER_GOOGLE_DRIVE
-    ? await ensureGoogleDriveAccessToken()
-    : await ensureDropboxAccessToken();
+  const accessToken = provider === PROVIDER_LOCAL
+    ? ''
+    : provider === PROVIDER_GOOGLE_DRIVE
+      ? await ensureGoogleDriveAccessToken()
+      : await ensureDropboxAccessToken();
   const storage = {
     provider,
     accessToken
@@ -6493,14 +6567,27 @@ async function getState() {
     getPopupUsageState()
   ]);
   const storageProvider = normalizeStorageProvider(settings.storageProvider);
-  const auth = auths[storageProvider] || authSummary(null);
+  const localAuth = {
+    connected: true,
+    provider: PROVIDER_LOCAL,
+    accountLabel: 'Local downloads ready',
+    expiresAt: 0
+  };
+  const allAuths = {
+    ...auths,
+    [PROVIDER_LOCAL]: localAuth
+  };
+  const auth = storageProvider === PROVIDER_LOCAL
+    ? localAuth
+    : allAuths[storageProvider] || authSummary(null);
   return {
     settings,
     auth,
-    auths,
+    auths: allAuths,
     activeUploads,
     history,
     appKeySaved: Boolean(appKey),
+    defaultDropboxAppKeyInUse: appKey === DEFAULT_DROPBOX_APP_KEY,
     customGoogleOAuthClientIdSaved,
     googleAuthConfigured: googleBrowserAuthConfigured,
     xCookiesSaved: Boolean(xCookieHeader),
@@ -6584,10 +6671,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       case 'SAVE_SETTINGS': {
         const saved = await saveSettingsPayload(message.settings || {});
+        const appKey = await getDropboxAppKey();
         sendResponse({
           ok: true,
           settings: saved,
-          appKeySaved: Boolean(await getDropboxAppKey()),
+          appKeySaved: Boolean(appKey),
+          defaultDropboxAppKeyInUse: appKey === DEFAULT_DROPBOX_APP_KEY,
           customGoogleOAuthClientIdSaved: await hasCustomGoogleOAuthClientId(),
           googleAuthConfigured: await isGoogleBrowserOAuthConfigured(),
           xCookiesSaved: Boolean(await getUsableXCookieHeader()),
