@@ -165,8 +165,13 @@ function flash(message) {
   }, 2200);
 }
 
-function getDropboxRedirectUri() {
-  return DEFAULT_DROPBOX_REDIRECT_URI;
+function getDropboxRedirectUri(appKey = '') {
+  const normalizedAppKey = appKey.trim();
+  if (normalizedAppKey === DEFAULT_DROPBOX_APP_KEY || (!normalizedAppKey && latestState?.defaultDropboxAppKeyInUse)) {
+    return DEFAULT_DROPBOX_REDIRECT_URI;
+  }
+
+  return chrome.identity.getRedirectURL('dropbox');
 }
 
 function getProviderRedirectUri(provider) {
@@ -176,7 +181,7 @@ function getProviderRedirectUri(provider) {
 
   return normalizeProvider(provider) === PROVIDER_GOOGLE_DRIVE
     ? chrome.identity.getRedirectURL()
-    : getDropboxRedirectUri();
+    : getDropboxRedirectUri(dropboxAppKeyEl.value);
 }
 
 function getProviderRedirectHint(provider) {
@@ -265,6 +270,7 @@ function syncAppKeyUi() {
   const isLocal = getProvider() === PROVIDER_LOCAL;
   const hasSavedAppKey = Boolean(latestState?.appKeySaved);
   const hasTypedAppKey = Boolean(dropboxAppKeyEl.value.trim());
+  const isUsingDefaultDropboxAppKey = Boolean(latestState?.defaultDropboxAppKeyInUse) && !hasTypedAppKey;
   const hasSavedGoogleClientId = Boolean(latestState?.customGoogleOAuthClientIdSaved);
   const hasTypedGoogleClientId = Boolean(googleOAuthClientIdEl.value.trim());
 
@@ -272,15 +278,17 @@ function syncAppKeyUi() {
     dropboxAppKeyFieldEl.hidden = !isDropbox;
   }
   appKeyStatusEl.hidden = !isDropbox || !hasSavedAppKey || hasTypedAppKey;
-  appKeyStatusLabelEl.textContent = hasSavedAppKey
+  appKeyStatusLabelEl.textContent = isUsingDefaultDropboxAppKey
     ? 'Using included Dropbox app key'
-    : '';
+    : hasSavedAppKey
+      ? 'Custom Dropbox app key saved'
+      : '';
   googleOAuthStatusEl.hidden = !isGoogleDrive || isLocal || hasTypedGoogleClientId;
   googleOAuthStatusLabelEl.textContent = hasSavedGoogleClientId
     ? 'Custom Google OAuth saved'
     : 'Using included Google OAuth';
   if (isDropbox) {
-    redirectUriEl.value = getDropboxRedirectUri();
+    redirectUriEl.value = getDropboxRedirectUri(dropboxAppKeyEl.value);
   }
   saveAppKeyActionsEl.hidden = false;
   saveAppKeyBtn.textContent = 'Save OAuth settings';
@@ -311,7 +319,9 @@ function renderState(state) {
   redirectUriHintEl.textContent = getProviderRedirectHint(provider);
   dropboxAppKeyEl.value = '';
   dropboxAppKeyEl.placeholder = state.appKeySaved
-    ? 'Using included Dropbox app key'
+    ? state.defaultDropboxAppKeyInUse
+      ? 'Using included Dropbox app key'
+      : 'Custom app key saved. Paste a new key to replace it.'
     : 'your Dropbox app key';
   googleOAuthClientIdEl.value = '';
   googleOAuthClientIdEl.placeholder = state.customGoogleOAuthClientIdSaved
@@ -323,7 +333,9 @@ function renderState(state) {
   saveLocalCopiesEl.disabled = isLocal;
   localDownloadFolderEl.value = state.settings.localDownloadFolder;
   appKeyHintEl.textContent = state.appKeySaved
-    ? 'The included Dropbox app key uses the fixed Redirect URI shown above.'
+    ? state.defaultDropboxAppKeyInUse
+      ? 'The included Dropbox app key uses the fixed Redirect URI shown above. Paste your own app key to use this browser profile’s Redirect URI instead.'
+      : 'Your custom Dropbox app key uses this browser profile’s Redirect URI shown above. Paste a new key only if you want to replace it.'
     : 'Paste an app key here only if you need it for Dropbox setup.';
   googleAuthHintEl.textContent = state.googleAuthConfigured
     ? 'Leave blank to keep using the included Google OAuth client. Saving a custom client ID will require reconnecting Google Drive.'
@@ -363,7 +375,9 @@ function renderState(state) {
       : 'Save a Web OAuth client ID in Advanced setup, then connect Google Drive.';
   } else {
     authStateEl.textContent = state.appKeySaved
-      ? 'Included Dropbox app key ready. Finish connecting from the main popup.'
+      ? state.defaultDropboxAppKeyInUse
+        ? 'Included Dropbox app key ready. Finish connecting from the main popup.'
+        : 'Custom Dropbox app key ready. Finish connecting from the main popup.'
       : 'Click Connect Dropbox and we will send you to Dropbox login first, then to app setup so you can get your app key.';
   }
 }
@@ -401,7 +415,7 @@ saveBtn.addEventListener('click', async () => {
 
 dropboxAppKeyEl.addEventListener('input', () => {
   if (getProvider() === PROVIDER_DROPBOX) {
-    redirectUriEl.value = getDropboxRedirectUri();
+    redirectUriEl.value = getDropboxRedirectUri(dropboxAppKeyEl.value);
   }
   syncAppKeyUi();
 });

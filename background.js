@@ -995,8 +995,14 @@ async function migrateLegacyDropboxAppKey() {
 }
 
 async function getDropboxAppKey() {
-  await migrateLegacyDropboxAppKey();
-  return DEFAULT_DROPBOX_APP_KEY;
+  const migrated = await migrateLegacyDropboxAppKey();
+  if (migrated) {
+    return migrated;
+  }
+
+  const secrets = await getSecrets();
+  const decrypted = await decryptSecret(secrets.dropboxAppKeyEncrypted);
+  return clampString(decrypted, '') || DEFAULT_DROPBOX_APP_KEY;
 }
 
 async function hasCustomGoogleOAuthClientId() {
