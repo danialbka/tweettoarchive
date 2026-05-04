@@ -2397,8 +2397,10 @@ function getDropboxAuthAttempts(primaryAppKey) {
 
   return appKeys.flatMap((appKey) => {
     const redirectUrls = [getDropboxRedirectUrl(appKey)];
-    const runtimeRedirectUrl = chrome.identity.getRedirectURL('dropbox');
-    if (!redirectUrls.includes(runtimeRedirectUrl)) {
+    const runtimeRedirectUrl = appKey === DEFAULT_DROPBOX_APP_KEY
+      ? ''
+      : chrome.identity.getRedirectURL('dropbox');
+    if (runtimeRedirectUrl && !redirectUrls.includes(runtimeRedirectUrl)) {
       redirectUrls.push(runtimeRedirectUrl);
     }
 
