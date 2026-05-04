@@ -5,8 +5,10 @@ const activeCountEl = document.getElementById('activeCount');
 const historyEl = document.getElementById('history');
 const historyCountEl = document.getElementById('historyCount');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+const openGalleryBtn = document.getElementById('openGalleryBtn');
 const closeBtn = document.getElementById('closeBtn');
 const toastEl = document.getElementById('toast');
+const GALLERY_WINDOW_URL = chrome.runtime.getURL('gallery.html');
 const COLLAPSED_UPLOAD_LIMIT = 10;
 const COLLAPSED_ACTIVE_ITEM_LIMIT = 10;
 const MEDIA_PREVIEW_HOVER_DELAY_MS = 150;
@@ -45,6 +47,95 @@ function showToast(message) {
   showToast.timer = setTimeout(() => {
     toastEl.hidden = true;
   }, 1800);
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-9999px';
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand('copy');
+  textArea.remove();
+}
+
+async function shareFallbackLink({ url, title = 'Saved media' }) {
+  const shareUrl = getSafeExternalUrl(url);
+  if (!shareUrl) {
+    throw new Error('No shareable link is available for this file.');
+  }
+
+  if (navigator.share) {
+    await navigator.share({
+      title,
+      text: title,
+      url: shareUrl
+    });
+    return 'Share sheet opened';
+  }
+
+  await copyTextToClipboard(shareUrl);
+  return 'Share link copied';
+}
+
+async function fetchShareFile({ url, filename, contentType }) {
+  const sourceUrl = getSafeExternalUrl(url);
+  if (!sourceUrl) {
+    throw new Error('No media file URL is available.');
+  }
+
+  const response = await fetch(sourceUrl, { credentials: 'omit' });
+  if (!response.ok) {
+    throw new Error(`Media file could not be loaded (${response.status}).`);
+  }
+
+  const blob = await response.blob();
+  const fileType = blob.type || String(contentType || '').split(';')[0].trim() || 'application/octet-stream';
+  return new File([blob], filename || 'saved-media', { type: fileType });
+}
+
+async function shareMediaTarget({ fileUrl, linkUrl, title = 'Saved media', filename = 'saved-media', contentType = '' }) {
+  if (navigator.share && fileUrl) {
+    try {
+      const file = await fetchShareFile({ url: fileUrl, filename, contentType });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title,
+          text: title
+        });
+        return 'Share sheet opened';
+      }
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        throw error;
+      }
+    }
+  }
+
+  return shareFallbackLink({ url: linkUrl || fileUrl, title });
+}
+
+function openGalleryWindow() {
+  chrome.windows.create({
+    url: GALLERY_WINDOW_URL,
+    type: 'popup',
+    width: 980,
+    height: 760,
+    focused: true
+  }, () => {
+    const runtimeError = chrome.runtime.lastError;
+    if (runtimeError) {
+      window.open(GALLERY_WINDOW_URL, '_blank', 'popup=yes,width=980,height=760');
+    }
+  });
 }
 
 function formatHistoryDate(value) {
@@ -152,6 +243,93 @@ function findFirstPreviewUploadFromEntries(entries) {
   }
 
   return null;
+}
+
+function getPreviewableUploads(uploads) {
+  const seenSources = new Set();
+  const previewUploads = [];
+
+  for (const upload of Array.isArray(uploads) ? uploads : []) {
+    const sourceUrl = getUploadPreviewSource(upload);
+    const kind = getUploadPreviewKind(upload);
+    if (!sourceUrl || !kind || seenSources.has(sourceUrl)) {
+      continue;
+    }
+
+    seenSources.add(sourceUrl);
+    previewUploads.push(upload);
+  }
+
+  return previewUploads;
+}
+
+function createHistoryMediaTile(upload) {
+  const sourceUrl = getUploadPreviewSource(upload);
+  const kind = getUploadPreviewKind(upload);
+  if (!sourceUrl || !kind) {
+    return null;
+  }
+
+  const tile = document.createElement('a');
+  tile.className = `history-media-tile is-${kind}`;
+  tile.href = sourceUrl;
+  tile.target = '_blank';
+  tile.rel = 'noopener noreferrer';
+  tile.title = upload.filename || 'Open media';
+  tile.setAttribute('aria-label', `Open ${upload.filename || 'media'} in a new tab`);
+
+  const media = document.createElement(kind === 'video' ? 'video' : 'img');
+  media.className = 'history-media-tile-frame';
+  media.src = sourceUrl;
+  media.addEventListener('error', () => {
+    tile.classList.add('is-unavailable');
+  }, { once: true });
+
+  if (kind === 'video') {
+    media.muted = true;
+    media.loop = true;
+    media.playsInline = true;
+    media.preload = 'metadata';
+    tile.addEventListener('mouseenter', () => media.play().catch(() => {}));
+    tile.addEventListener('focus', () => media.play().catch(() => {}));
+    tile.addEventListener('mouseleave', () => media.pause());
+    tile.addEventListener('blur', () => media.pause());
+  } else {
+    media.alt = '';
+    media.loading = 'lazy';
+  }
+
+  tile.appendChild(media);
+
+  if (upload.filename) {
+    const caption = document.createElement('span');
+    caption.className = 'history-media-tile-caption';
+    caption.textContent = upload.filename;
+    tile.appendChild(caption);
+  }
+
+  return tile;
+}
+
+function appendHistoryMediaGrid(parent, uploads, { limit = 12 } = {}) {
+  const previewUploads = getPreviewableUploads(uploads).slice(0, limit);
+  if (!previewUploads.length) {
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'history-media-grid';
+
+  for (const upload of previewUploads) {
+    const tile = createHistoryMediaTile(upload);
+    if (tile) {
+      grid.appendChild(tile);
+    }
+  }
+
+  if (grid.childNodes.length) {
+    parent.appendChild(grid);
+  }
 }
 
 function clearDetachedMediaPreviews() {
@@ -339,6 +517,7 @@ function buildDropboxWebUrl(filePath) {
 }
 
 function inferRemoteProvider(upload, remoteUrl) {
+  if (upload?.provider === 'local') return 'local';
   if (upload?.provider === 'google-drive') return 'google-drive';
   if (upload?.provider === 'dropbox') return 'dropbox';
 
@@ -367,6 +546,22 @@ function getUploadRemoteLink(upload) {
       : provider === 'dropbox'
         ? 'Open in Dropbox'
         : 'Open in cloud'
+  };
+}
+
+function getUploadShareTarget(upload) {
+  const remoteLink = getUploadRemoteLink(upload);
+  const previewUrl = getUploadPreviewSource(upload);
+  if (!remoteLink?.url && !previewUrl) {
+    return null;
+  }
+
+  return {
+    fileUrl: previewUrl,
+    linkUrl: remoteLink?.url || previewUrl,
+    title: upload?.filename || 'Saved media',
+    filename: upload?.filename || 'saved-media',
+    contentType: upload?.contentType || ''
   };
 }
 
@@ -443,6 +638,30 @@ function appendHistoryUploadRows(parent, uploads) {
       cloudLink.textContent = remoteLink.label;
       appendMediaHoverPreview(cloudLink, upload);
       metaLine.appendChild(cloudLink);
+    }
+
+    const shareTarget = getUploadShareTarget(upload);
+    if (shareTarget) {
+      const shareButton = document.createElement('button');
+      shareButton.className = 'history-icon-action';
+      shareButton.type = 'button';
+      shareButton.title = 'Share to phone with AirDrop';
+      shareButton.setAttribute('aria-label', `Share ${shareTarget.title} to phone with AirDrop`);
+      shareButton.textContent = '↗';
+      shareButton.addEventListener('click', async () => {
+        shareButton.disabled = true;
+        try {
+          const message = await shareMediaTarget(shareTarget);
+          showToast(message);
+        } catch (error) {
+          if (error?.name !== 'AbortError') {
+            showToast(error instanceof Error ? error.message : String(error));
+          }
+        } finally {
+          shareButton.disabled = false;
+        }
+      });
+      metaLine.appendChild(shareButton);
     }
 
     if (upload.localSavedPath) {
@@ -771,6 +990,7 @@ function createHistoryEntryElement(entry, allEntries) {
     ? uploads.slice(0, COLLAPSED_UPLOAD_LIMIT)
     : uploads;
 
+  appendHistoryMediaGrid(wrap, visibleUploads);
   appendHistoryUploadRows(wrap, visibleUploads);
 
   if (canCollapseUploads) {
@@ -828,6 +1048,13 @@ function createProfileMediaGroupElement(groupEntries, allEntries) {
   summary.textContent = `${firstEntry.sourceLabel || 'Profile media'} - ${groupEntries.length} saved post${groupEntries.length === 1 ? '' : 's'}`;
   wrap.appendChild(summary);
 
+  if (!isExpanded) {
+    appendHistoryMediaGrid(
+      wrap,
+      groupEntries.flatMap((entry) => Array.isArray(entry.uploads) ? entry.uploads : [])
+    );
+  }
+
   for (const entry of visibleEntries) {
     const postWrap = document.createElement('div');
     postWrap.className = 'history-profile-post';
@@ -838,7 +1065,9 @@ function createProfileMediaGroupElement(groupEntries, allEntries) {
     appendMediaHoverPreview(postUrl, findFirstPreviewUpload(entry.uploads));
     postWrap.appendChild(postUrl);
 
-    appendHistoryUploadRows(postWrap, Array.isArray(entry.uploads) ? entry.uploads : []);
+    const uploads = Array.isArray(entry.uploads) ? entry.uploads : [];
+    appendHistoryMediaGrid(postWrap, uploads);
+    appendHistoryUploadRows(postWrap, uploads);
     wrap.appendChild(postWrap);
   }
 
@@ -937,6 +1166,10 @@ clearHistoryBtn.addEventListener('click', async () => {
 
 closeBtn.addEventListener('click', () => {
   window.close();
+});
+
+openGalleryBtn.addEventListener('click', () => {
+  openGalleryWindow();
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {

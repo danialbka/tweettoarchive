@@ -36,13 +36,15 @@ const connectBtn = document.getElementById('connectBtn');
 const optionsBtn = document.getElementById('optionsBtn');
 const settingsIconBtn = document.getElementById('settingsIconBtn');
 const openHistoryBtn = document.getElementById('openHistoryBtn');
+const openGalleryBtn = document.getElementById('openGalleryBtn');
 const unlockBtn = document.getElementById('unlockBtn');
 const restoreBtn = document.getElementById('restoreBtn');
 const paymentDismissBtn = document.getElementById('paymentDismissBtn');
 const toastEl = document.getElementById('toast');
 const pageBody = document.body;
-const POPUP_WIDTH_PX = 520;
+const POPUP_WIDTH_PX = 560;
 const HISTORY_WINDOW_URL = chrome.runtime.getURL('history.html');
+const GALLERY_WINDOW_URL = chrome.runtime.getURL('gallery.html');
 const UPLOAD_COMPLETE_HOLD_MS = 1000;
 let latestState = null;
 let uploadInFlight = false;
@@ -114,19 +116,16 @@ function getProvider(state = latestState) {
 }
 
 function getProviderLabel(provider) {
-  if (provider === PROVIDER_GOOGLE_DRIVE) return 'Google Drive';
-  if (provider === PROVIDER_LOCAL) return 'Local';
-  return 'Dropbox';
+  if (provider === PROVIDER_LOCAL) return 'Local only';
+  return provider === PROVIDER_GOOGLE_DRIVE ? 'Google Drive' : 'Dropbox';
 }
 
 function getProviderAuth(state = latestState, provider = getProvider(state)) {
   const normalizedProvider = provider === PROVIDER_GOOGLE_DRIVE
     ? PROVIDER_GOOGLE_DRIVE
-    : provider === PROVIDER_LOCAL
-      ? PROVIDER_LOCAL
-      : PROVIDER_DROPBOX;
+    : (provider === PROVIDER_LOCAL ? PROVIDER_LOCAL : PROVIDER_DROPBOX);
   if (normalizedProvider === PROVIDER_LOCAL) {
-    return { connected: true, provider: PROVIDER_LOCAL, accountLabel: 'Local downloads ready' };
+    return { connected: true, provider: PROVIDER_LOCAL, accountLabel: 'Saving locally' };
   }
 
   const providerAuth = state?.auths?.[normalizedProvider];
@@ -253,7 +252,7 @@ function buildUploadToast(summary) {
   }
 
   if (failedInputs > 0) {
-    return firstFailure || `Could not upload ${failedInputs} link${failedInputs === 1 ? '' : 's'}.`;
+    return firstFailure || `Could not save ${failedInputs} link${failedInputs === 1 ? '' : 's'}.`;
   }
 
   return 'Nothing was saved.';
@@ -461,9 +460,7 @@ function syncStorageSelector(state) {
   storageChoiceBtns.forEach((button) => {
     const choiceProvider = button.dataset.storageChoice === PROVIDER_GOOGLE_DRIVE
       ? PROVIDER_GOOGLE_DRIVE
-      : button.dataset.storageChoice === PROVIDER_LOCAL
-        ? PROVIDER_LOCAL
-        : PROVIDER_DROPBOX;
+      : (button.dataset.storageChoice === PROVIDER_LOCAL ? PROVIDER_LOCAL : PROVIDER_DROPBOX);
     button.setAttribute('aria-pressed', choiceProvider === provider ? 'true' : 'false');
   });
 
@@ -506,8 +503,7 @@ function syncSetupBanner(state) {
 
 function formatLocalFolder(settings) {
   if (getProvider({ settings }) === PROVIDER_LOCAL) {
-    const folder = String(settings.localDownloadFolder || '').trim();
-    return folder ? `Downloads/${folder}` : 'Downloads';
+    return 'Local only';
   }
 
   if (!settings?.saveLocalCopies) {
@@ -530,18 +526,22 @@ function getRemoteFolderLabel(settings) {
 }
 
 function normalizeEditableRemoteFolder(provider, value) {
-  const normalized = String(value || '').trim().replace(/\\/g, '/').replace(/\/+/g, '/');
+  const normalized = String(value || '')
+    .trim()
+    .replace(/^Downloads\/?/i, '')
+    .replace(/\\/g, '/')
+    .replace(/\/+/g, '/');
   const segments = normalized
     .split('/')
     .map((segment) => segment.trim())
     .filter(Boolean)
     .filter((segment) => segment !== '.' && segment !== '..');
 
-  if (provider === PROVIDER_LOCAL) {
+  if (provider === PROVIDER_GOOGLE_DRIVE) {
     return segments.join('/') || 'Tweet Media Archive';
   }
 
-  if (provider === PROVIDER_GOOGLE_DRIVE) {
+  if (provider === PROVIDER_LOCAL) {
     return segments.join('/') || 'Tweet Media Archive';
   }
 
@@ -593,13 +593,11 @@ function startFolderEdit() {
   }
 
   const provider = getProvider(latestState);
-  folderInputEl.value = provider === PROVIDER_LOCAL
-    ? (latestState.settings.localDownloadFolder || '')
-    : getRemoteFolderLabel(latestState.settings);
+  folderInputEl.value = getRemoteFolderLabel(latestState.settings);
   folderInputEl.dataset.originalValue = folderInputEl.value;
-  folderInputEl.placeholder = provider === PROVIDER_LOCAL
+  folderInputEl.placeholder = provider === PROVIDER_GOOGLE_DRIVE
     ? 'Tweet Media Archive'
-    : provider === PROVIDER_GOOGLE_DRIVE ? 'Tweet Media Archive' : '/Twitter Imports';
+    : (provider === PROVIDER_LOCAL ? 'Tweet Media Archive' : '/Twitter Imports');
   setFolderEditorVisible(true);
   folderInputEl.focus();
   folderInputEl.select();
@@ -627,11 +625,9 @@ async function saveFolderEdit() {
 
   const nextSettings = {
     ...latestState.settings,
-    ...(provider === PROVIDER_LOCAL
-      ? { localDownloadFolder: nextFolder }
-      : provider === PROVIDER_GOOGLE_DRIVE
+    ...(provider === PROVIDER_GOOGLE_DRIVE
       ? { googleDriveFolderName: nextFolder }
-      : { dropboxFolder: nextFolder })
+      : (provider === PROVIDER_LOCAL ? { localDownloadFolder: nextFolder } : { dropboxFolder: nextFolder }))
   };
   const optimisticState = {
     ...(latestState || {}),
@@ -673,7 +669,7 @@ async function saveSelectedFolder() {
     ...latestState.settings,
     ...(provider === PROVIDER_GOOGLE_DRIVE
       ? { googleDriveFolderName: nextFolder }
-      : { dropboxFolder: nextFolder })
+      : (provider === PROVIDER_LOCAL ? { localDownloadFolder: nextFolder } : { dropboxFolder: nextFolder }))
   };
   renderState({
     ...(latestState || {}),
@@ -707,13 +703,15 @@ function renderStatusIndicator(state) {
   statusDotEl.classList.toggle('connected', connected);
   statusDotEl.classList.toggle('warning', !connected);
 
-  if (connected) {
-    if (provider === PROVIDER_LOCAL) {
-      statusIndicatorLabelEl.textContent = 'Local downloads ready';
-      statusIndicatorHintEl.textContent = `${folder} • ${usage.paid ? 'unlimited' : `${usage.remainingFreeUploads} free left`}`;
-      return;
-    }
+  if (provider === PROVIDER_LOCAL) {
+    statusIndicatorLabelEl.textContent = 'Saving locally';
+    statusIndicatorHintEl.textContent = usage.paid
+      ? `${folder} - unlimited`
+      : `${folder} - ${usage.remainingFreeUploads} free left`;
+    return;
+  }
 
+  if (connected) {
     if (usage.paid) {
       statusIndicatorLabelEl.textContent = `${label} connected`;
       statusIndicatorHintEl.textContent = `${folder} • unlimited`;
@@ -799,7 +797,9 @@ function renderState(state) {
   folderStatusEl.textContent = getRemoteFolderLabel(state.settings);
   renderFolderSelect(state.settings);
   localStatusEl.textContent = formatLocalFolder(state.settings);
-  pasteStatusEl.textContent = state.settings.autoStartOnPaste ? 'Starts automatically' : `Click Save to ${label}`;
+  pasteStatusEl.textContent = state.settings.autoStartOnPaste
+    ? 'Starts automatically'
+    : (provider === PROVIDER_LOCAL ? 'Click Save locally' : `Click Save to ${label}`);
   planStatusEl.textContent = state.usage?.paid
     ? 'Unlimited'
     : (state.usage?.hasMultipleUnlockPlans
@@ -816,7 +816,7 @@ function renderState(state) {
   captureInstagramCookiesBtn.textContent = 'Connect my Instagram account';
   uploadBtn.textContent = state.usage?.limitReached
     ? getUnlockButtonText(state.usage)
-    : `Save to ${label}`;
+    : (provider === PROVIDER_LOCAL ? 'Save locally' : `Save to ${label}`);
   setBusy(uploadInFlight || hasActiveUploadSessions(state.activeUploads), { persist: false });
   syncActiveUploadState(state.activeUploads);
 }
@@ -832,6 +832,21 @@ function openHistoryWindow() {
     const runtimeError = chrome.runtime.lastError;
     if (runtimeError) {
       window.open(HISTORY_WINDOW_URL, '_blank', 'popup=yes,width=760,height=620');
+    }
+  });
+}
+
+function openGalleryWindow() {
+  chrome.windows.create({
+    url: GALLERY_WINDOW_URL,
+    type: 'popup',
+    width: 980,
+    height: 760,
+    focused: true
+  }, () => {
+    const runtimeError = chrome.runtime.lastError;
+    if (runtimeError) {
+      window.open(GALLERY_WINDOW_URL, '_blank', 'popup=yes,width=980,height=760');
     }
   });
 }
@@ -891,7 +906,7 @@ function requestRefreshState() {
 async function startUpload() {
   const provider = getProvider(latestState);
   const label = getProviderLabel(provider);
-  if (provider !== PROVIDER_LOCAL && !isProviderConnected(latestState, provider)) {
+  if (!isProviderConnected(latestState, provider)) {
     showToast(isProviderSetupReady(latestState, provider)
       ? `Click Connect ${label} first.`
       : `Connect ${label} first.`);
@@ -955,7 +970,7 @@ async function maybeStartUploadAfterPaste() {
     return;
   }
 
-  if (getProvider(latestState) !== PROVIDER_LOCAL && !isProviderConnected(latestState, getProvider(latestState))) {
+  if (!isProviderConnected(latestState, getProvider(latestState))) {
     const provider = getProvider(latestState);
     const label = getProviderLabel(provider);
     showToast(isProviderSetupReady(latestState, provider)
@@ -1034,7 +1049,7 @@ connectBtn.addEventListener('click', async () => {
   const provider = getProvider(latestState);
   const label = getProviderLabel(provider);
   if (provider === PROVIDER_LOCAL) {
-    showToast('Local downloads are ready.');
+    showToast('Local saving is ready.');
     return;
   }
 
@@ -1073,9 +1088,7 @@ storageChoiceBtns.forEach((button) => {
   button.addEventListener('click', async () => {
     const provider = button.dataset.storageChoice === PROVIDER_GOOGLE_DRIVE
       ? PROVIDER_GOOGLE_DRIVE
-      : button.dataset.storageChoice === PROVIDER_LOCAL
-        ? PROVIDER_LOCAL
-        : PROVIDER_DROPBOX;
+      : (button.dataset.storageChoice === PROVIDER_LOCAL ? PROVIDER_LOCAL : PROVIDER_DROPBOX);
     if (!latestState?.settings || provider === getProvider(latestState) || uploadInFlight) {
       return;
     }
@@ -1116,6 +1129,10 @@ settingsIconBtn.addEventListener('click', () => {
 
 openHistoryBtn.addEventListener('click', () => {
   openHistoryWindow();
+});
+
+openGalleryBtn.addEventListener('click', () => {
+  openGalleryWindow();
 });
 
 unlockBtn.addEventListener('click', async () => {
