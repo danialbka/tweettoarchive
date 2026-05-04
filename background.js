@@ -2389,6 +2389,28 @@ function getDropboxRedirectUrl(appKey) {
     : chrome.identity.getRedirectURL('dropbox');
 }
 
+function getDropboxAuthAttempts(primaryAppKey) {
+  const appKeys = [primaryAppKey];
+  if (primaryAppKey !== DEFAULT_DROPBOX_APP_KEY) {
+    appKeys.push(DEFAULT_DROPBOX_APP_KEY);
+  }
+
+  return appKeys.flatMap((appKey) => {
+    const redirectUrls = [getDropboxRedirectUrl(appKey)];
+    const runtimeRedirectUrl = chrome.identity.getRedirectURL('dropbox');
+    if (!redirectUrls.includes(runtimeRedirectUrl)) {
+      redirectUrls.push(runtimeRedirectUrl);
+    }
+
+    return redirectUrls.map((redirectUrl) => ({ appKey, redirectUrl }));
+  });
+}
+
+function isRetryableDropboxAuthError(error) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return /authorization page could not be loaded|invalid_app|invalid redirect_uri|redirect uri|invalid_client/i.test(message);
+}
+
 function assertExpectedOAuthCallbackUrl(callbackUrl, expectedRedirectUrl) {
   const parsed = new URL(callbackUrl);
   const expected = new URL(expectedRedirectUrl);
@@ -3536,68 +3558,80 @@ async function findGoogleDriveFileInFolder(accessToken, { folderId, filename }) 
 }
 
 async function connectDropbox() {
-  const appKey = await getDropboxAppKey();
-  if (!appKey) {
+  const primaryAppKey = await getDropboxAppKey();
+  if (!primaryAppKey) {
     throw new Error('Add your Dropbox app key in Options before connecting.');
   }
 
-  const redirectUrl = getDropboxRedirectUrl(appKey);
-  const codeVerifier = createCodeVerifier();
-  const codeChallenge = await createCodeChallenge(codeVerifier);
-  const state = createCodeVerifier();
+  let lastAuthError = null;
   const forceReauthentication = await shouldForceDropboxReauthentication();
-  const authUrl = buildDropboxAuthUrl(appKey, redirectUrl, codeChallenge, {
-    forceReauthentication,
-    state
-  });
 
-  const responseUrl = await chrome.identity.launchWebAuthFlow({
-    url: authUrl,
-    interactive: true
-  });
+  for (const { appKey, redirectUrl } of getDropboxAuthAttempts(primaryAppKey)) {
+    const codeVerifier = createCodeVerifier();
+    const codeChallenge = await createCodeChallenge(codeVerifier);
+    const state = createCodeVerifier();
+    const authUrl = buildDropboxAuthUrl(appKey, redirectUrl, codeChallenge, {
+      forceReauthentication,
+      state
+    });
 
-  if (!responseUrl) {
-    throw new Error('Dropbox login did not complete.');
+    try {
+      const responseUrl = await chrome.identity.launchWebAuthFlow({
+        url: authUrl,
+        interactive: true
+      });
+
+      if (!responseUrl) {
+        throw new Error('Dropbox login did not complete.');
+      }
+
+      const parsed = assertExpectedOAuthCallbackUrl(responseUrl, redirectUrl);
+      const authCode = parsed.searchParams.get('code');
+      const authError = parsed.searchParams.get('error_description') || parsed.searchParams.get('error');
+      const returnedState = parsed.searchParams.get('state') || '';
+
+      if (authError) {
+        throw new Error(authError);
+      }
+
+      if (returnedState !== state) {
+        throw new Error('Dropbox returned an invalid sign-in state. Try connecting again.');
+      }
+
+      if (!authCode) {
+        throw new Error('Dropbox did not return an authorization code.');
+      }
+
+      const tokenData = await exchangeDropboxCode({
+        appKey,
+        code: authCode,
+        codeVerifier,
+        redirectUrl
+      });
+
+      const account = await getDropboxAccount(tokenData.access_token);
+      const auth = {
+        provider: PROVIDER_DROPBOX,
+        mode: 'oauth',
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token || '',
+        expiresAt: Date.now() + (Number(tokenData.expires_in || 0) * 1000),
+        accountName: account.name?.display_name || '',
+        accountEmail: account.email || ''
+      };
+
+      await setAuth(auth);
+      await setDropboxForceReauthentication(false);
+      return authSummary(auth);
+    } catch (error) {
+      lastAuthError = error;
+      if (!isRetryableDropboxAuthError(error)) {
+        throw error;
+      }
+    }
   }
 
-  const parsed = assertExpectedOAuthCallbackUrl(responseUrl, redirectUrl);
-  const authCode = parsed.searchParams.get('code');
-  const authError = parsed.searchParams.get('error_description') || parsed.searchParams.get('error');
-  const returnedState = parsed.searchParams.get('state') || '';
-
-  if (authError) {
-    throw new Error(authError);
-  }
-
-  if (returnedState !== state) {
-    throw new Error('Dropbox returned an invalid sign-in state. Try connecting again.');
-  }
-
-  if (!authCode) {
-    throw new Error('Dropbox did not return an authorization code.');
-  }
-
-  const tokenData = await exchangeDropboxCode({
-    appKey,
-    code: authCode,
-    codeVerifier,
-    redirectUrl
-  });
-
-  const account = await getDropboxAccount(tokenData.access_token);
-  const auth = {
-    provider: PROVIDER_DROPBOX,
-    mode: 'oauth',
-    accessToken: tokenData.access_token,
-    refreshToken: tokenData.refresh_token || '',
-    expiresAt: Date.now() + (Number(tokenData.expires_in || 0) * 1000),
-    accountName: account.name?.display_name || '',
-    accountEmail: account.email || ''
-  };
-
-  await setAuth(auth);
-  await setDropboxForceReauthentication(false);
-  return authSummary(auth);
+  throw lastAuthError || new Error('Dropbox login did not complete.');
 }
 
 async function connectGoogleDrive() {
