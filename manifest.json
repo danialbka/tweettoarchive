@@ -3,7 +3,7 @@
   "name": "Tweet Media Archive",
   "description": "Archive media from X, Twitter, and Instagram to Dropbox, Google Drive, or local Downloads.",
   "version": "0.1.6",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjUYFvDQT7Sb+jVj93ytGymFZsQkRGMu+XF4hal4iKN0ikS6CD8dKZ4TLVXV5lV/dMLtYAf0GKyQXce90ilOSQ5fwCLqh6OY1ZmWN0iIwnyWYwwksASB4hBYYsLKaD4hiXcuWHk3TeyLihld4ftHXbF3ehpFpbpzvM1wFkvSSkooMgiayUn/xhlSnnAq1kose01Q//Oyxiu1VtaQ9W82tj47CTM37HGYLf1WRFvxorlKYFcKaKmuaA2jDIyYnuttk6YVXtDyqY86P7Tjc+blT1I3925ZXopMzIg2vhuyR/gFxMbqYqndKu9Px28yNqsCGbCDaf+mRwWCLSrCCRYQV3QIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAhFNJULoaFsmgmVuZNi00ihc7Vl57/LpvLcW4FkDryFCNypd0pNmgZ7PnXD0Tz/wVZCw7xBd+Xnzqm8OcWgYX+aakCoKX1xEg/FBBAdxTAtnDC8LbCry2Pwylfzk8eiaL2aQG9cUQB8uH5BSqWo87QjGJ/U4P6WFgYoqIGI31pKe3+e/XZkGGTsAdb85Klp5BCIHoKrCE/xdjRWIIqL9TCXfvks6qev/gwPcVw43Ba5F65T0ru9/r4tb5fbWqN6GOyyXmo8X8OFAlVNaxo8jAm9gdwgkL0NUXbwbl6Xfyc4Z01CoAMB3FPtQNyYbbY/umQKGjz/1TPRMHfwsKdDC/pwIDAQAB",
   "permissions": [
     "storage",
     "identity",
